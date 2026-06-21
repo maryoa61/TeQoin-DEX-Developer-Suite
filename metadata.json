@@ -1,0 +1,6 @@
+{
+  "name": "TeQoin DEX Developer Suite",
+  "description": "An interactive environment to design, simulate, download, and automate the deployment of Uniswap V2 Contracts on TeQoin EVM Network.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
