@@ -187,7 +187,7 @@ jobs:
           cache: "npm"
 
       - name: Install Hardhat project dependencies
-        run: npm install
+        run: npm install --legacy-peer-deps
 
       - name: Run Hardhat Compiler
         run: npx hardhat compile
