@@ -39,7 +39,7 @@ export function getProjectFiles(config: {
   "main": "index.js",
   "scripts": {
     "compile": "npx hardhat compile",
-    "deploy": "npx hardhat run scripts/deploy.js --network teqoin"
+    "deploy": "npx hardhat run scripts/deploy.cjs --network teqoin"
   },
   "devDependencies": {
     "@ethersproject/providers": "^5.7.2",
@@ -111,8 +111,8 @@ module.exports = {
 };`
     },
     {
-      name: "deploy.js",
-      path: "scripts/deploy.js",
+      name: "deploy.cjs",
+      path: "scripts/deploy.cjs",
       language: "javascript",
       descriptionFa: "اسکریپت خودکار دیپلوی Factory و سپس Router02 روی شبکه TeQoin به ترتیب اولویت.",
       descriptionEn: "Sequential deployment script deploying UniswapV2Factory first, then UniswapV2Router02.",
@@ -210,7 +210,7 @@ jobs:
         env:
           PRIVATE_KEY: \${{ secrets.PRIVATE_KEY }}
           TEQOIN_RPC_URL: \${{ secrets.TEQOIN_RPC_URL || '${safeRpcUrl}' }}
-        run: npx hardhat run scripts/deploy.js --network teqoin`
+        run: npx hardhat run scripts/deploy.cjs --network teqoin`
     },
     {
       name: "UniswapV2Factory.sol",
