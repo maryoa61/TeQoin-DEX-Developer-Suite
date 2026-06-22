@@ -33,6 +33,7 @@ export interface SwapTabProps {
   setSwapTokenOut: React.Dispatch<React.SetStateAction<string>>;
   token0Address: string;
   token1Address: string;
+  wethAddress?: string;
   swapTxMining: boolean;
   approveTxMining: boolean;
   swapTxHash: string;

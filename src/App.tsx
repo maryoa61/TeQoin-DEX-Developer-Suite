@@ -484,6 +484,7 @@ export default function App() {
               setSwapTokenOut={setSwapTokenOut}
               token0Address={token0Address}
               token1Address={token1Address}
+              wethAddress={wethAddress}
               swapTxMining={swapTxMining}
               approveTxMining={approveTxMining}
               swapTxHash={swapTxHash}
