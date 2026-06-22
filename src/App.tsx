@@ -60,9 +60,9 @@ export default function App() {
   const [web3StatusMsg, setWeb3StatusMsg] = useState("");
 
   // DEX Interact State
-  const [factoryAddress, setFactoryAddress] = useState("0x5FbDB2315678afecb367f032d93F642f64180aa3");
-  const [routerAddress, setRouterAddress] = useState("0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512");
-  const [token0Address, setToken0Address] = useState("0x173aEb5005CDA99fD8469fD5c6978f5339CEd8e2");
+  const [factoryAddress, setFactoryAddress] = useState("0x16A8861a12E3135e8Db32b4198d90c6100f28737");
+  const [routerAddress, setRouterAddress] = useState("0x64c0481600d7C77FA113011Fc3d854b68766C311");
+  const [token0Address, setToken0Address] = useState("0x6cC35D27dEc15F8adeC439cD969989B0b03D5979");
   const [token1Address, setToken1Address] = useState("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2");
   
   // Dynamic On-chain fetch results
@@ -81,7 +81,7 @@ export default function App() {
   // Swap states
   const [swapType, setSwapType] = useState<"eth_to_tokens" | "tokens_to_tokens">("eth_to_tokens");
   const [swapAmountIn, setSwapAmountIn] = useState("0.05");
-  const [swapTokenIn, setSwapTokenIn] = useState("0x173aEb5005CDA99fD8469fD5c6978f5339CEd8e2");
+  const [swapTokenIn, setSwapTokenIn] = useState("0x6cC35D27dEc15F8adeC439cD969989B0b03D5979");
   const [swapTokenOut, setSwapTokenOut] = useState("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2");
   const [swapAmountOutMin, setSwapAmountOutMin] = useState("0");
   const [swapTxMining, setSwapTxMining] = useState(false);
