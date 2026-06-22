@@ -120,7 +120,19 @@ module.exports = {
       content: `const hre = require("hardhat");
 
 async function main() {
-  const [deployer] = await hre.ethers.getSigners();
+  const signers = await hre.ethers.getSigners();
+  if (!signers || signers.length === 0) {
+    console.error("====================================================");
+    console.error("❌ ERROR: No deployer seed/private key found!");
+    console.error("Please configure the 'PRIVATE_KEY' environment variable or GitHub Repository Secret.");
+    console.error("To fix this:");
+    console.error("1. Go to your GitHub repository.");
+    console.error("2. Navigate to Settings -> Secrets and variables -> Actions");
+    console.error("3. Add a Repository Secret named 'PRIVATE_KEY' with your deployer private key.");
+    console.error("====================================================");
+    process.exit(1);
+  }
+  const deployer = signers[0];
   console.log("====================================================");
   console.log("Starting deployment on TeQoin Network...");
   console.log("Deployer account:", deployer.address);
