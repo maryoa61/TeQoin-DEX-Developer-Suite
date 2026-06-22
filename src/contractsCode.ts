@@ -42,23 +42,22 @@ export function getProjectFiles(config: {
     "deploy": "npx hardhat run scripts/deploy.cjs --network teqoin"
   },
   "devDependencies": {
-    "@ethersproject/providers": "^5.7.2",
-    "@nomicfoundation/hardhat-chai-matchers": "^1.0.6",
-    "@nomicfoundation/hardhat-network-helpers": "^1.0.8",
-    "@nomicfoundation/hardhat-toolbox": "^2.0.2",
-    "@nomiclabs/hardhat-ethers": "^2.2.3",
-    "@nomiclabs/hardhat-etherscan": "^3.1.7",
-    "@typechain/ethers-v5": "^10.2.1",
-    "@typechain/hardhat": "^6.1.6",
+    "@nomicfoundation/hardhat-chai-matchers": "^2.0.0",
+    "@nomicfoundation/hardhat-ethers": "^3.0.0",
+    "@nomicfoundation/hardhat-network-helpers": "^1.0.0",
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "@nomicfoundation/hardhat-verify": "^2.0.0",
+    "@typechain/ethers-v6": "^0.5.0",
+    "@typechain/hardhat": "^9.0.0",
     "@types/chai": "^4.3.5",
     "@types/mocha": "^10.0.1",
     "chai": "^4.3.7",
     "dotenv": "^16.0.3",
-    "hardhat": "^2.14.0",
-    "hardhat-gas-reporter": "^1.0.9",
-    "solidity-coverage": "^0.8.2",
+    "hardhat": "^2.19.4",
+    "hardhat-gas-reporter": "^1.0.8",
+    "solidity-coverage": "^0.8.0",
     "ts-node": "^10.9.1",
-    "typechain": "^8.1.1"
+    "typechain": "^8.3.0"
   }
 }`
     },
@@ -124,8 +123,8 @@ async function main() {
   console.log("Starting deployment on TeQoin Network...");
   console.log("Deployer account:", deployer.address);
   
-  const balance = await deployer.getBalance();
-  console.log("Account balance:", hre.ethers.utils.formatEther(balance), "ETH");
+  const balance = await deployer.provider.getBalance(deployer.address);
+  console.log("Account balance:", hre.ethers.formatEther(balance), "ETH");
   console.log("====================================================");
 
   // 1. Deploy Factory
@@ -135,10 +134,12 @@ async function main() {
 
   const UniswapV2Factory = await hre.ethers.getContractFactory("UniswapV2Factory");
   const factory = await UniswapV2Factory.deploy(feeSetterAddress);
-  await factory.deployed();
+  await factory.waitForDeployment();
+  const factoryAddress = await factory.getAddress();
 
-  console.log("SUCCESS: UniswapV2Factory deployed to:", factory.address);
-  console.log("Transaction Hash:", factory.deployTransaction.hash);
+  console.log("SUCCESS: UniswapV2Factory deployed to:", factoryAddress);
+  const factoryTx = factory.deploymentTransaction();
+  console.log("Transaction Hash:", factoryTx ? factoryTx.hash : "N/A");
   console.log("----------------------------------------------------");
 
   // 2. WETH Address configuration
@@ -150,14 +151,16 @@ async function main() {
 
   // 3. Deploy Router
   console.log("Step 3: Deploying UniswapV2Router02...");
-  console.log("Parameters -> Factory:", factory.address, "| WETH:", wethAddress);
+  console.log("Parameters -> Factory:", factoryAddress, "| WETH:", wethAddress);
 
   const UniswapV2Router02 = await hre.ethers.getContractFactory("UniswapV2Router02");
-  const router = await UniswapV2Router02.deploy(factory.address, wethAddress);
-  await router.deployed();
+  const router = await UniswapV2Router02.deploy(factoryAddress, wethAddress);
+  await router.waitForDeployment();
+  const routerAddress = await router.getAddress();
 
-  console.log("SUCCESS: UniswapV2Router02 deployed to:", router.address);
-  console.log("Transaction Hash:", router.deployTransaction.hash);
+  console.log("SUCCESS: UniswapV2Router02 deployed to:", routerAddress);
+  const routerTx = router.deploymentTransaction();
+  console.log("Transaction Hash:", routerTx ? routerTx.hash : "N/A");
   console.log("====================================================");
   console.log("DEX Deploy completed successfully!");
   console.log("Factory Private Hash:", await factory.pairCodeHash());

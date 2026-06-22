@@ -6,8 +6,8 @@ async function main() {
   console.log("Starting real-world deployment on TeQoin Network...");
   console.log("Deployer account:", deployer.address);
   
-  const balance = await deployer.getBalance();
-  console.log("Account balance:", hre.ethers.utils.formatEther(balance), "TEQ");
+  const balance = await deployer.provider.getBalance(deployer.address);
+  console.log("Account balance:", hre.ethers.formatEther(balance), "TEQ");
   console.log("====================================================");
 
   // 1. Deploy Factory
@@ -18,10 +18,12 @@ async function main() {
 
   const UniswapV2Factory = await hre.ethers.getContractFactory("UniswapV2Factory");
   const factory = await UniswapV2Factory.deploy(feeSetterAddress);
-  await factory.deployed();
+  await factory.waitForDeployment();
+  const factoryAddress = await factory.getAddress();
 
-  console.log("✔ SUCCESS: UniswapV2Factory deployed to:", factory.address);
-  console.log("Deploy Transaction Hash:", factory.deployTransaction.hash);
+  console.log("✔ SUCCESS: UniswapV2Factory deployed to:", factoryAddress);
+  const factoryTx = factory.deploymentTransaction();
+  console.log("Deploy Transaction Hash:", factoryTx ? factoryTx.hash : "N/A");
   console.log("----------------------------------------------------");
 
   // 2. Wrapped Native configuration (WETH address)
@@ -33,14 +35,16 @@ async function main() {
 
   // 3. Deploy Router
   console.log("Step 3: Deploying UniswapV2Router02...");
-  console.log("Parameters -> Factory:", factory.address, "| WETH:", wethAddress);
+  console.log("Parameters -> Factory:", factoryAddress, "| WETH:", wethAddress);
 
   const UniswapV2Router02 = await hre.ethers.getContractFactory("UniswapV2Router02");
-  const router = await UniswapV2Router02.deploy(factory.address, wethAddress);
-  await router.deployed();
+  const router = await UniswapV2Router02.deploy(factoryAddress, wethAddress);
+  await router.waitForDeployment();
+  const routerAddress = await router.getAddress();
 
-  console.log("✔ SUCCESS: UniswapV2Router02 deployed to:", router.address);
-  console.log("Deploy Transaction Hash:", router.deployTransaction.hash);
+  console.log("✔ SUCCESS: UniswapV2Router02 deployed to:", routerAddress);
+  const routerTx = router.deploymentTransaction();
+  console.log("Deploy Transaction Hash:", routerTx ? routerTx.hash : "N/A");
   console.log("====================================================");
   console.log("Uniswap V2 Deployment finished successfully on TeQoin!");
   console.log("Factory hash:", await factory.pairCodeHash());
