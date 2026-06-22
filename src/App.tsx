@@ -38,8 +38,8 @@ import { getProjectFiles, ProjectFile } from "./contractsCode";
 
 export default function App() {
   // Config state (Dynamic environment params)
-  const [rpcUrl, setRpcUrl] = useState("https://rpc.teqoin.com");
-  const [chainId, setChainId] = useState(1827);
+  const [rpcUrl, setRpcUrl] = useState("https://rpc.teqoin.io");
+  const [chainId, setChainId] = useState(420377);
   const [wethAddress, setWethAddress] = useState("0xC02aaA39b223FE8D0A0e5C4F27ead9083C756Cc2");
   const [feeSetter, setFeeSetter] = useState("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266");
   const [projectName, setProjectName] = useState("teqoin-dex");
@@ -78,6 +78,18 @@ export default function App() {
   const [txMining, setTxMining] = useState(false);
   const [txHashResult, setTxHashResult] = useState("");
 
+  // Swap states
+  const [swapType, setSwapType] = useState<"eth_to_tokens" | "tokens_to_tokens">("eth_to_tokens");
+  const [swapAmountIn, setSwapAmountIn] = useState("0.05");
+  const [swapTokenIn, setSwapTokenIn] = useState("0x173aEb5005CDA99fD8469fD5c6978f5339CEd8e2");
+  const [swapTokenOut, setSwapTokenOut] = useState("0xC02aaA39b223FE8D0A0e5C4F27ead9083C756Cc2");
+  const [swapAmountOutMin, setSwapAmountOutMin] = useState("0");
+  const [swapTxMining, setSwapTxMining] = useState(false);
+  const [approveTxMining, setApproveTxMining] = useState(false);
+  const [swapTxHash, setSwapTxHash] = useState("");
+  const [approveTxHash, setApproveTxHash] = useState("");
+  const [swapStatusText, setSwapStatusText] = useState("");
+
   // AI Assistant state
   const [chatInput, setChatInput] = useState("");
   const [chatHistory, setChatHistory] = useState<Array<{ sender: "user" | "ai"; text: string }>>([
@@ -92,6 +104,10 @@ export default function App() {
   // Generate customized files based on user variables
   const files = getProjectFiles({ rpcUrl, chainId, wethAddress, feeSetter, projectName });
   const activeFile = files[selectedFileIndex] || files[0];
+
+  const isL2 = chainId === 420377;
+  const currentSymbol = isL2 ? "ETH" : "TEQ";
+  const explorerUrl = isL2 ? "https://testnet-blockscan.teqoin.io/" : "https://explorer.teqoin.com";
 
   useEffect(() => {
     chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -154,7 +170,7 @@ export default function App() {
     }
   };
 
-  // Auto-Inject/setup TaQoin RPC testnet in MetaMask securely with 1 click
+  // Auto-Inject/setup TeQoin RPC in MetaMask securely with 1 click
   const addTaQoinNetwork = async () => {
     if (typeof window === "undefined" || !(window as any).ethereum) {
       alert(language === "fa" ? "لطفاً ابتدا متامسک را نصب کنید." : "Please install MetaMask first.");
@@ -162,15 +178,21 @@ export default function App() {
     }
 
     try {
+      const hexChainId = "0x" + chainId.toString(16);
+      const isL2 = chainId === 420377;
+      const networkName = isL2 ? "TeQoin L2" : "TaQoin Testnet";
+      const currencySymbol = isL2 ? "ETH" : "TEQ";
+      const expUrl = isL2 ? "https://testnet-blockscan.teqoin.io/" : "https://explorer.teqoin.com";
+
       await (window as any).ethereum.request({
         method: "wallet_addEthereumChain",
         params: [
           {
-            chainId: "0x723", // 1827 in hex representation
-            chainName: "TaQoin Testnet",
-            rpcUrls: ["https://rpc.teqoin.com"],
-            nativeCurrency: { name: "TaQoin", symbol: "TEQ", decimals: 18 },
-            blockExplorerUrls: ["https://explorer.teqoin.com"]
+            chainId: hexChainId,
+            chainName: networkName,
+            rpcUrls: [rpcUrl.trim()],
+            nativeCurrency: { name: currencySymbol, symbol: currencySymbol, decimals: 18 },
+            blockExplorerUrls: [expUrl]
           }
         ]
       });
@@ -180,7 +202,7 @@ export default function App() {
       }
     } catch (err: any) {
       console.error(err);
-      alert("Error adding TaQoin: " + err.message);
+      alert("Error adding network: " + err.message);
     }
   };
 
@@ -193,7 +215,7 @@ export default function App() {
     setPoolStatusText("");
 
     try {
-      const tempRpcProvider = new ethers.JsonRpcProvider("https://rpc.teqoin.com");
+      const tempRpcProvider = new ethers.JsonRpcProvider(rpcUrl.trim());
       
       const factoryContract = new ethers.Contract(
         factoryAddress.trim(),
@@ -272,6 +294,111 @@ export default function App() {
       alert(language === "fa" ? `خطا در باز و اجرای تراکنش: ${err.message}` : `Tx Execution Error: ${err.message}`);
     } finally {
       setTxMining(false);
+    }
+  };
+
+  // Swap trigger handler: ERC20 approve
+  const triggerApproveForSwap = async () => {
+    if (!walletConnected || !provider) {
+      alert(language === "fa" ? "لطفاً ابتدا کیف پول خود را متصل کنید." : "Please connect your wallet first.");
+      return;
+    }
+    if (!swapTokenIn) {
+      alert(language === "fa" ? "آدرس توکن ورودی الزامی است." : "Input token address is required.");
+      return;
+    }
+    setApproveTxMining(true);
+    setSwapStatusText("");
+    try {
+      const signer = await provider.getSigner();
+      const tokenContract = new ethers.Contract(
+        swapTokenIn.trim(),
+        ["function approve(address spender, uint256 amount) external returns (bool)"],
+        signer
+      );
+      // Approve high amount
+      const amountToApprove = ethers.parseUnits(swapAmountIn || "1000", 18);
+      const tx = await tokenContract.approve(routerAddress.trim(), amountToApprove);
+      setApproveTxHash(tx.hash);
+      setSwapStatusText(language === "fa" ? "تراکنش تاییدیه (Approve) ارسال شد. منتظر تایید..." : "Approve transaction broadcasted. Waiting for confirmation...");
+      await tx.wait();
+      setSwapStatusText(language === "fa" ? "تاییدیه با موفقیت انجام شد!" : "Token approval completed successfully!");
+    } catch (err: any) {
+      console.error(err);
+      setSwapStatusText(language === "fa" ? `خطا در اجرای تاییدیه: ${err.message}` : `Approval error: ${err.message}`);
+    } finally {
+      setApproveTxMining(false);
+    }
+  };
+
+  // Swap trigger handler: Execute Swap
+  const triggerExecuteSwap = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!walletConnected || !provider) {
+      alert(language === "fa" ? "لطفاً ابتدا کیف پول خود را متصل کنید." : "Please connect your wallet first.");
+      return;
+    }
+    if (swapType === "tokens_to_tokens" && (!swapTokenIn || !swapTokenOut)) {
+      alert(language === "fa" ? "هر دو آدرس توکن برای سواپ الزامی هستند." : "Both token addresses are required for swap.");
+      return;
+    }
+    if (swapType === "eth_to_tokens" && !swapTokenOut) {
+      alert(language === "fa" ? "آدرس توکن خروجی الزامی است." : "Output token address is required.");
+      return;
+    }
+
+    setSwapTxMining(true);
+    setSwapTxHash("");
+    setSwapStatusText("");
+
+    try {
+      const signer = await provider.getSigner();
+      const routerContract = new ethers.Contract(
+        routerAddress.trim(),
+        swapType === "eth_to_tokens"
+          ? ["function swapExactETHForTokens(uint amountOutMin, address[] calldata path, address to, uint deadline) external payable returns (uint[] memory amounts)"]
+          : ["function swapExactTokensForTokens(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) external returns (uint[] memory amounts)"],
+        signer
+      );
+
+      const toAddress = userAddress;
+      const deadline = Math.floor(Date.now() / 1000) + 1200; // 20 mins
+      const finalAmountOutMin = ethers.parseUnits(swapAmountOutMin || "0", 18);
+
+      let tx;
+      if (swapType === "eth_to_tokens") {
+        const amountInWei = ethers.parseEther(swapAmountIn);
+        const path = [wethAddress.trim(), swapTokenOut.trim()];
+        setSwapStatusText(language === "fa" ? "در حال ارسال تراکنش سواپ اتریوم..." : "Sending ETH swap transaction...");
+        tx = await routerContract.swapExactETHForTokens(
+          finalAmountOutMin,
+          path,
+          toAddress,
+          deadline,
+          { value: amountInWei }
+        );
+      } else {
+        const amountInUnits = ethers.parseUnits(swapAmountIn, 18);
+        const path = [swapTokenIn.trim(), swapTokenOut.trim()];
+        setSwapStatusText(language === "fa" ? "در حال ارسال تراکنش سواپ توکن به توکن..." : "Sending token to token swap transaction...");
+        tx = await routerContract.swapExactTokensForTokens(
+          amountInUnits,
+          finalAmountOutMin,
+          path,
+          toAddress,
+          deadline
+        );
+      }
+
+      setSwapTxHash(tx.hash);
+      setSwapStatusText(language === "fa" ? "تراکنش سواپ با موفقیت ارسال شد. منتظر تایید بلاکچین..." : "Swap transaction sent. Waiting for block confirmation...");
+      await tx.wait();
+      setSwapStatusText(language === "fa" ? "سواپ با موفقیت انجام شد!" : "Swap executed successfully!");
+    } catch (err: any) {
+      console.error(err);
+      setSwapStatusText(language === "fa" ? `خطا در سواپ: ${err.message}` : `Swap execution error: ${err.message}`);
+    } finally {
+      setSwapTxMining(false);
     }
   };
 
@@ -377,7 +504,7 @@ export default function App() {
                   {userAddress.slice(0, 6)}...{userAddress.slice(-4)}
                 </p>
                 <p className="text-[9px] font-mono text-slate-400 leading-none mt-0.5">
-                  {parseFloat(userBalance).toFixed(4)} TEQ
+                  {parseFloat(userBalance).toFixed(4)} {currentSymbol}
                 </p>
               </div>
             </div>
@@ -484,8 +611,8 @@ export default function App() {
                     <div className="bg-slate-950/70 p-3 rounded-lg border border-slate-900 font-mono text-[10px] space-y-1 text-slate-400">
                       <div><span className="text-slate-500">RPC Gateway:</span> {rpcUrl}</div>
                       <div><span className="text-slate-500">Network ID:</span> {chainId}</div>
-                      <div><span className="text-slate-500">Currency Symbol:</span> TEQ</div>
-                      <div><span className="text-slate-500">Explorer Url:</span> https://explorer.teqoin.com</div>
+                      <div><span className="text-slate-500">Currency Symbol:</span> {currentSymbol}</div>
+                      <div><span className="text-slate-500">Explorer Url:</span> {explorerUrl}</div>
                     </div>
 
                     <button
@@ -536,7 +663,7 @@ export default function App() {
                       </div>
 
                       <div>
-                        <label className="block text-[10px] text-slate-500 font-mono mb-1">TOKEN 0 REPRESENTATIVE (TEQ):</label>
+                        <label className="block text-[10px] text-slate-500 font-mono mb-1">TOKEN 0 REPRESENTATIVE ({currentSymbol}):</label>
                         <input 
                           type="text" 
                           value={token0Address} 
@@ -688,7 +815,7 @@ export default function App() {
                         <div className="bg-slate-950 p-3.5 rounded-xl border border-indigo-900/40 text-xs flex flex-col gap-1 text-indigo-300">
                           <span className="font-bold text-[10px] text-slate-500 font-mono">TX BROADCAST SUCCESS:</span>
                           <a 
-                            href={`https://explorer.teqoin.com/tx/${txHashResult}`} 
+                            href={`${explorerUrl}tx/${txHashResult}`} 
                             target="_blank" 
                             rel="noreferrer"
                             className="underline font-mono text-[11px] truncate flex items-center gap-1 hover:text-indigo-200"
@@ -713,6 +840,254 @@ export default function App() {
                           ? (language === "fa" ? "ابتدا متامسک را وصل کنید" : "Connect wallet first") 
                           : (language === "fa" ? "دیپلوی و ایجاد استخر جفت در بلاکچین" : "Broadcast createPair Transaction")}
                       </button>
+                    </form>
+                  </div>
+
+                  {/* Write Contract: Swap via Router02 */}
+                  <div className="bg-slate-900 border border-slate-850 rounded-2xl p-6 flex flex-col gap-4">
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-2">
+                        <div className="p-1.5 bg-emerald-500/10 text-emerald-400 rounded-lg">
+                          <ArrowLeftRight className="w-4 h-4" />
+                        </div>
+                        <h2 className="text-base font-bold text-slate-100">
+                          {language === "fa" ? "مرحله ۳: انجام سواپ واقعی رمز ارز از طریق Router02" : "Swap Tokens/ETH via Router02"}
+                        </h2>
+                      </div>
+
+                      <span className="text-[10px] font-mono font-bold bg-slate-950 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-md">
+                        ROUTER02 WRITE CALL
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-slate-400 leading-relaxed">
+                      {language === "fa"
+                        ? "با استفاده از کیف پول متصل خود مستقیماً با متدهای صرافی UniswapV2Router02 تعامل کنید. شما می‌توانید ریال دیجیتال/اتریوم تستی را با توکن ERC20 یا دو توکن ERC20 را با یکدیگر مبادله کنید:"
+                        : "Interact with UniswapV2Router02 swap mechanisms. Execute instant swapExactETHForTokens or swapExactTokensForTokens directly on TaQoin network."}
+                    </p>
+
+                    {/* Swap Type Selector Tabs */}
+                    <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-850">
+                      <button
+                        onClick={() => {
+                          setSwapType("eth_to_tokens");
+                          setSwapStatusText("");
+                        }}
+                        className={`flex-1 py-2 text-center text-xs font-semibold rounded-lg transition duration-150 ${
+                          swapType === "eth_to_tokens"
+                            ? "bg-slate-800 text-emerald-400 shadow-sm"
+                            : "text-slate-400 hover:text-slate-200"
+                        }`}
+                        type="button"
+                      >
+                        {language === "fa" ? `سواپ کوین بومی (${currentSymbol}) به توکن` : `Swap Native ${currentSymbol} for Tokens`}
+                      </button>
+                      <button
+                        onClick={() => {
+                          setSwapType("tokens_to_tokens");
+                          setSwapStatusText("");
+                        }}
+                        className={`flex-1 py-2 text-center text-xs font-semibold rounded-lg transition duration-150 ${
+                          swapType === "tokens_to_tokens"
+                            ? "bg-slate-800 text-emerald-400 shadow-sm"
+                            : "text-slate-400 hover:text-slate-200"
+                        }`}
+                        type="button"
+                      >
+                        {language === "fa" ? "سواپ توکن با توکن (ERC20)" : "Swap ERC20 for ERC20"}
+                      </button>
+                    </div>
+
+                    <form onSubmit={triggerExecuteSwap} className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-[10px] text-slate-500 font-mono mb-1">
+                            {language === "fa" ? "مقدار ورودی برای پرداخت:" : "AMOUNT IN (TO PAY):"}
+                          </label>
+                          <div className="relative">
+                            <input 
+                              type="text" 
+                              value={swapAmountIn}
+                              onChange={(e) => setSwapAmountIn(e.target.value)}
+                              className="w-full bg-slate-950 border border-slate-850 rounded-xl px-3 py-2 text-xs text-slate-100 font-mono focus:border-emerald-500 outline-none pr-12"
+                              required
+                            />
+                            <span className="absolute right-3 top-2.5 text-[10px] font-bold text-slate-500 font-mono">
+                              {swapType === "eth_to_tokens" ? `${currentSymbol} (WETH)` : "TOKEN IN"}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] text-slate-500 font-mono mb-1">
+                            {language === "fa" ? "حداقل مقدار خروجی یا لغزش:" : "MINIMUM OUT (SLIPPAGE):"}
+                          </label>
+                          <input 
+                            type="text" 
+                            value={swapAmountOutMin}
+                            onChange={(e) => setSwapAmountOutMin(e.target.value)}
+                            className="w-full bg-slate-950 border border-slate-855 rounded-xl px-3 py-2 text-xs text-slate-300 font-mono focus:border-emerald-500 outline-none"
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      {swapType === "tokens_to_tokens" ? (
+                        <div className="space-y-3 p-4 bg-slate-950/50 rounded-xl border border-slate-850 font-sans">
+                          <div>
+                            <div className="flex justify-between items-center mb-1">
+                              <label className="block text-[10px] text-slate-500 font-mono">TOKEN IN (ERC20) ADDRESS:</label>
+                              <button
+                                type="button"
+                                onClick={() => setSwapTokenIn(token0Address)}
+                                className="text-[9px] text-emerald-400 hover:underline"
+                              >
+                                {language === "fa" ? "قراردادن آدرس توکن آزمایشی ۰" : "Use Token 0 Representative"}
+                              </button>
+                            </div>
+                            <input 
+                              type="text" 
+                              value={swapTokenIn}
+                              onChange={(e) => setSwapTokenIn(e.target.value)}
+                              className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-300 font-mono focus:border-emerald-500 outline-none"
+                              required
+                            />
+                          </div>
+
+                          <div>
+                            <div className="flex justify-between items-center mb-1">
+                              <label className="block text-[10px] text-slate-500 font-mono">TOKEN OUT (ERC20) ADDRESS:</label>
+                              <button
+                                type="button"
+                                onClick={() => setSwapTokenOut(token1Address)}
+                                className="text-[9px] text-emerald-400 hover:underline"
+                              >
+                                {language === "fa" ? "قراردادن آدرس توکن آزمایشی ۱" : "Use Token 1 Representative"}
+                              </button>
+                            </div>
+                            <input 
+                              type="text" 
+                              value={swapTokenOut}
+                              onChange={(e) => setSwapTokenOut(e.target.value)}
+                              className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-300 font-mono focus:border-emerald-500 outline-none"
+                              required
+                            />
+                          </div>
+
+                          <div className="bg-amber-500/5 text-amber-400 text-[11px] p-3 rounded-lg border border-amber-500/10 leading-normal flex items-start gap-2">
+                            <Info className="w-3.5 h-3.5 text-amber-400 mt-0.5 flex-shrink-0" />
+                            <span>
+                              {language === "fa"
+                                ? "برای سواپ توکن به توکن ابتدا باید با زدن دکمه تایید پرداخت (Approve)، به روتر اجازه انتقال توکن را صادر کنید تا تراکنش سواپ با موفقیت انجام شود."
+                                : "Swapping ERC20 tokens directly requires you to broadcast an Approve transaction first so the router contract can spend them."}
+                            </span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="p-4 bg-slate-950/50 rounded-xl border border-slate-850 space-y-3 font-sans">
+                          <div>
+                            <div className="flex justify-between items-center mb-1">
+                              <label className="block text-[10px] text-slate-500 font-mono">SWAP OUTPUT TARGET TOKEN ADDRESS:</label>
+                              <button
+                                type="button"
+                                onClick={() => setSwapTokenOut(token1Address)}
+                                className="text-[9px] text-emerald-400 hover:underline"
+                              >
+                                {language === "fa" ? "قراردادن آدرس توکن آزمایشی ۱" : "Use Token 1 Representative"}
+                              </button>
+                            </div>
+                            <input 
+                              type="text" 
+                              value={swapTokenOut}
+                              onChange={(e) => setSwapTokenOut(e.target.value)}
+                              className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-300 font-mono focus:border-emerald-500 outline-none"
+                              required
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Status display */}
+                      {swapStatusText && (
+                        <div className="bg-slate-950 p-3 rounded-lg border border-slate-850 text-xs text-emerald-300 flex items-center gap-2">
+                          <Info className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
+                          <span>{swapStatusText}</span>
+                        </div>
+                      )}
+
+                      {/* Transactions hashes output */}
+                      {(approveTxHash || swapTxHash) && (
+                        <div className="space-y-2">
+                          {approveTxHash && (
+                            <div className="bg-slate-950 p-3 rounded-xl border border-emerald-950/40 text-xs flex flex-col gap-0.5 text-emerald-300">
+                              <span className="font-bold text-[10px] text-slate-500 font-mono">APPROVE TX HASH:</span>
+                              <a 
+                                href={`${explorerUrl}tx/${approveTxHash}`} 
+                                target="_blank" 
+                                rel="noreferrer"
+                                className="underline font-mono text-[11px] truncate flex items-center gap-1 hover:text-emerald-200"
+                              >
+                                <span>{approveTxHash}</span>
+                                <ArrowUpRight className="w-3.5 h-3.5" />
+                              </a>
+                            </div>
+                          )}
+
+                          {swapTxHash && (
+                            <div className="bg-slate-950 p-3 rounded-xl border border-emerald-950/40 text-xs flex flex-col gap-0.5 text-emerald-300">
+                              <span className="font-bold text-[10px] text-slate-500 font-mono">SWAP TX HASH:</span>
+                              <a 
+                                href={`${explorerUrl}tx/${swapTxHash}`} 
+                                target="_blank" 
+                                rel="noreferrer"
+                                className="underline font-mono text-[11px] truncate flex items-center gap-1 hover:text-emerald-200"
+                              >
+                                <span>{swapTxHash}</span>
+                                <ArrowUpRight className="w-3.5 h-3.5" />
+                              </a>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {swapType === "tokens_to_tokens" && (
+                          <button
+                            type="button"
+                            onClick={triggerApproveForSwap}
+                            disabled={approveTxMining || !walletConnected}
+                            className="bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-emerald-400 border border-emerald-500/20 py-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2"
+                          >
+                            {approveTxMining ? (
+                              <RefreshCw className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Check className="w-4 h-4" />
+                            )}
+                            {language === "fa" ? "۱. تایید پرداخت توکن (Approve)" : "1. Approve Router Spender"}
+                          </button>
+                        )}
+
+                        <button
+                          type="submit"
+                          disabled={swapTxMining || !walletConnected}
+                          className={`py-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-lg ${
+                            swapType === "tokens_to_tokens"
+                              ? "bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 disabled:opacity-50 text-slate-950 shadow-emerald-500/10"
+                              : "col-span-1 md:col-span-2 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 disabled:opacity-50 text-slate-950 shadow-emerald-500/10"
+                          }`}
+                        >
+                          {swapTxMining ? (
+                            <RefreshCw className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <ArrowLeftRight className="w-4 h-4" />
+                          )}
+                          {!walletConnected 
+                            ? (language === "fa" ? "ابتدا متامسک را وصل کنید" : "Connect wallet first") 
+                            : swapType === "tokens_to_tokens"
+                              ? (language === "fa" ? "۲. انجام نهایی مبادله (Swap)" : "2. Broadcast Swap")
+                              : (language === "fa" ? "دیپلوی تراکنش مبادله (Swap)" : "Broadcast Swap Transaction")}
+                        </button>
+                      </div>
                     </form>
                   </div>
 
@@ -914,8 +1289,8 @@ export default function App() {
                           </p>
 
                           <div className="bg-slate-950 p-3 rounded-lg border border-slate-855 font-mono text-[11px] text-slate-400 mt-2 space-y-1">
-                            <div>• <span className="text-emerald-400 font-bold">PRIVATE_KEY</span>: <span className="text-slate-500">{language === "fa" ? "کلید خصوصی ولت دیپلوی‌کننده دارای موجودی TEQ" : "Your deployer private key with TEQ balance"}</span></div>
-                            <div>• <span className="text-emerald-400 font-bold">TEQOIN_RPC_URL</span>: <span className="text-slate-500">https://rpc.teqoin.com</span></div>
+                            <div>• <span className="text-emerald-400 font-bold">PRIVATE_KEY</span>: <span className="text-slate-500">{language === "fa" ? "کلید خصوصی ولت دیپلوی‌کننده دارای موجودی کوین بومی" : "Your deployer private key with native coin balance"}</span></div>
+                            <div>• <span className="text-emerald-400 font-bold">TEQOIN_RPC_URL</span>: <span className="text-slate-500">{rpcUrl}</span></div>
                           </div>
                         </div>
                       </div>
@@ -1107,7 +1482,7 @@ export default function App() {
       <footer className="border-t border-slate-900 bg-slate-950/70 py-4 px-6 text-center text-xs text-slate-500 font-mono">
         <div>
           <span>{projectName} v1.0.0 — Connected To Chain ID {chainId} on </span>
-          <a href="https://rpc.teqoin.com" target="_blank" rel="noreferrer" className="text-emerald-500 hover:underline">rpc.teqoin.com</a>
+          <a href={rpcUrl} target="_blank" rel="noreferrer" className="text-emerald-500 hover:underline">{rpcUrl.replace("https://", "")}</a>
         </div>
       </footer>
     </div>

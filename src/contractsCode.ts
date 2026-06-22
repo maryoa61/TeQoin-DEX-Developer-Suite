@@ -19,8 +19,8 @@ export function getProjectFiles(config: {
   feeSetter: string;
   projectName: string;
 }): ProjectFile[] {
-  const safeRpcUrl = config.rpcUrl || "https://rpc.teqoin.com";
-  const safeChainId = config.chainId || 1827;
+  const safeRpcUrl = config.rpcUrl || "https://rpc.teqoin.io";
+  const safeChainId = config.chainId || 420377;
   const safeWeth = config.wethAddress || "0xC02aaA39b223FE8D0A0e5C4F27ead9083C756Cc2";
   const safeFeeSetter = config.feeSetter || "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
   const safeProject = config.projectName || "teqoin-dex";
@@ -111,7 +111,7 @@ async function main() {
   console.log("Deployer account:", deployer.address);
   
   const balance = await deployer.getBalance();
-  console.log("Account balance:", hre.ethers.utils.formatEther(balance), "TEQ");
+  console.log("Account balance:", hre.ethers.utils.formatEther(balance), "ETH");
   console.log("====================================================");
 
   // 1. Deploy Factory
