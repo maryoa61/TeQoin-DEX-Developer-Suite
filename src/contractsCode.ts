@@ -57,7 +57,6 @@ export function getProjectFiles(config: {
     "dotenv": "^16.0.3",
     "hardhat": "^2.19.4",
     "hardhat-gas-reporter": "^1.0.8",
-    "hardhat-ignition": "^0.15.0",
     "solidity-coverage": "^0.8.0",
     "ts-node": "^10.9.1",
     "typechain": "^8.3.0"

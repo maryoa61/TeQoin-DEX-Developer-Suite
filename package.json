@@ -43,7 +43,6 @@
     "esbuild": "^0.25.0",
     "hardhat": "^2.19.4",
     "hardhat-gas-reporter": "^1.0.8",
-    "hardhat-ignition": "^0.15.0",
     "solidity-coverage": "^0.8.0",
     "tailwindcss": "^4.1.14",
     "ts-node": "^10.9.1",
