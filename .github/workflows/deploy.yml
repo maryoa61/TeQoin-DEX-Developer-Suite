@@ -1,34 +1,9 @@
-name: Deploy DEX Contracts to TeQoin Network
-
-on:
-  push:
-    branches: [ main, master ]
-  workflow_dispatch:
-
 jobs:
-  deploy-dex:
-    name: Compile & Deploy Uniswap V2
+  deploy:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Git Checkout
-        uses: actions/checkout@v3
-
-      - name: Configure Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: "22.x"
-          cache: "npm"
-
-      - name: Install Hardhat dependencies
-        run: npm install --legacy-peer-deps
-
-      - name: Run Hardhat Compiler
-        run: npx hardhat compile
-
-      - name: Deploy Contracts to TeQoin EVM
+      - uses: actions/checkout@v3
+      - run: npm install
+      - run: npx hardhat run scripts/deploy-token.cjs --network teqoin
         env:
           PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
-          TEQOIN_RPC_URL: ${{ secrets.TEQOIN_RPC_URL || 'https://rpc.teqoin.io' }}
-          WETH_ADDRESS: ${{ secrets.WETH_ADDRESS || '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2' }}
-        run: npx hardhat run scripts/deploy.cjs --network teqoin
