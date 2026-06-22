@@ -1,3 +1,4 @@
+
 {
   "name": "teqoin-dex-suite",
   "version": "1.0.0",
@@ -6,7 +7,8 @@
     "deploy": "hardhat run scripts/deploy.cjs --network teqoin"
   },
   "dependencies": {
-    "@openzeppelin/contracts": "^5.0.0"
+    "@openzeppelin/contracts": "^5.0.0",
+    "dotenv": "^16.4.5"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
