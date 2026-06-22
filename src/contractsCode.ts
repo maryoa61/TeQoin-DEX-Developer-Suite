@@ -187,7 +187,7 @@ jobs:
           cache: "npm"
 
       - name: Install Hardhat project dependencies
-        run: npm ci
+        run: npm install
 
       - name: Run Hardhat Compiler
         run: npx hardhat compile
