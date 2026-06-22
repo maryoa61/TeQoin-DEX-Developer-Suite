@@ -40,7 +40,7 @@ export default function App() {
   // Config state (Dynamic environment params)
   const [rpcUrl, setRpcUrl] = useState("https://rpc.teqoin.io");
   const [chainId, setChainId] = useState(420377);
-  const [wethAddress, setWethAddress] = useState("0xC02aaA39b223FE8D0A0e5C4F27ead9083C756Cc2");
+  const [wethAddress, setWethAddress] = useState("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2");
   const [feeSetter, setFeeSetter] = useState("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266");
   const [projectName, setProjectName] = useState("teqoin-dex");
   
@@ -63,7 +63,7 @@ export default function App() {
   const [factoryAddress, setFactoryAddress] = useState("0x5FbDB2315678afecb367f032d93F642f64180aa3");
   const [routerAddress, setRouterAddress] = useState("0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512");
   const [token0Address, setToken0Address] = useState("0x173aEb5005CDA99fD8469fD5c6978f5339CEd8e2");
-  const [token1Address, setToken1Address] = useState("0xC02aaA39b223FE8D0A0e5C4F27ead9083C756Cc2");
+  const [token1Address, setToken1Address] = useState("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2");
   
   // Dynamic On-chain fetch results
   const [queryLoading, setQueryLoading] = useState(false);
@@ -82,7 +82,7 @@ export default function App() {
   const [swapType, setSwapType] = useState<"eth_to_tokens" | "tokens_to_tokens">("eth_to_tokens");
   const [swapAmountIn, setSwapAmountIn] = useState("0.05");
   const [swapTokenIn, setSwapTokenIn] = useState("0x173aEb5005CDA99fD8469fD5c6978f5339CEd8e2");
-  const [swapTokenOut, setSwapTokenOut] = useState("0xC02aaA39b223FE8D0A0e5C4F27ead9083C756Cc2");
+  const [swapTokenOut, setSwapTokenOut] = useState("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2");
   const [swapAmountOutMin, setSwapAmountOutMin] = useState("0");
   const [swapTxMining, setSwapTxMining] = useState(false);
   const [approveTxMining, setApproveTxMining] = useState(false);

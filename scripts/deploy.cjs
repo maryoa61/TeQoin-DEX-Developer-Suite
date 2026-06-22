@@ -40,7 +40,7 @@ async function main() {
 
   // 2. Wrapped Native configuration (WETH address)
   // Feel free to replace this with your network's actual wrapped token address
-  const wethAddress = process.env.WETH_ADDRESS || "0xC02aaA39b223FE8D0A0e5C4F27ead9083C756Cc2";
+  const wethAddress = (process.env.WETH_ADDRESS || "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").toLowerCase();
   console.log("Step 2: Configuring Wrapped native token...");
   console.log("WETH address used for Router deployment:", wethAddress);
   console.log("----------------------------------------------------");

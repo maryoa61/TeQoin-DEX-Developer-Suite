@@ -21,7 +21,7 @@ export function getProjectFiles(config: {
 }): ProjectFile[] {
   const safeRpcUrl = config.rpcUrl || "https://rpc.teqoin.io";
   const safeChainId = config.chainId || 420377;
-  const safeWeth = config.wethAddress || "0xC02aaA39b223FE8D0A0e5C4F27ead9083C756Cc2";
+  const safeWeth = (config.wethAddress || "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").toLowerCase();
   const safeFeeSetter = config.feeSetter || "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
   const safeProject = config.projectName || "teqoin-dex";
 
@@ -158,7 +158,7 @@ async function main() {
 
   // 2. WETH Address configuration
   // On TeQoin network, specify WETH or custom wrapped token address
-  const wethAddress = "${safeWeth}";
+  const wethAddress = "${safeWeth}".toLowerCase();
   console.log("Step 2: Configuring Wrapped native token...");
   console.log("Target Wrapped Token (WETH) address:", wethAddress);
   console.log("----------------------------------------------------");
