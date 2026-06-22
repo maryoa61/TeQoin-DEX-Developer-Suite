@@ -183,7 +183,7 @@ jobs:
       - name: Configure Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: "18.x"
+          node-version: "22.x"
           cache: "npm"
 
       - name: Install Hardhat project dependencies
