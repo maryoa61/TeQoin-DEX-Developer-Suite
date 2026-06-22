@@ -1,3 +1,4 @@
+
 name: Deploy DEX Contracts to TeQoin Network
 
 on:
@@ -17,19 +18,19 @@ jobs:
       - name: Configure Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: "22" # اصلاح شد: تغییر از 18.x به 22 برای رفع خطای نسخه
+          node-version: "22"
           cache: "npm"
 
       - name: Install Hardhat dependencies
         run: npm install
 
       - name: Run Hardhat Compiler
-        run: npx hardhat compile
+        # اجرای مستقیم از مسیر محلی برای جلوگیری از خطای HHE22
+        run: ./node_modules/.bin/hardhat compile
 
       - name: Deploy Contracts to TeQoin EVM
         env:
           PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
           TEQOIN_RPC_URL: ${{ secrets.TEQOIN_RPC_URL || 'https://rpc.teqoin.com' }}
-          WETH_ADDRESS: ${{ secrets.WETH_ADDRESS || '0xC02aaA39b223FE8D0A0e5C4F27ead9083C756Cc2' }}
-        # دقت کنید که نام شبکه در اینجا باید دقیقاً با نام شبکه در hardhat.config.js یکی باشد
-        run: npx hardhat run scripts/deploy.js --network teqoin
+        # اجرای مستقیم از مسیر محلی
+        run: ./node_modules/.bin/hardhat run scripts/deploy.js --network teqoin
