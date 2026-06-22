@@ -1,3 +1,4 @@
+
 name: Deploy DEX Contracts to TeQoin Network
 
 on:
@@ -17,11 +18,12 @@ jobs:
       - name: Configure Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: "22"
-          cache: "npm"
+          node-version: "20"
 
       - name: Install dependencies
-        run: npm install
+        run: |
+          npm install
+          npm install @openzeppelin/contracts @nomicfoundation/hardhat-toolbox hardhat ethers --save-dev
 
       - name: Run Hardhat Compiler
         run: npx hardhat compile
@@ -30,5 +32,4 @@ jobs:
         env:
           PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
           TEQOIN_RPC_URL: ${{ secrets.TEQOIN_RPC_URL || 'https://rpc.teqoin.com' }}
-        # دقت کن: اینجا داریم فایلِ موجودِ تو (deploy.cjs) رو اجرا می‌کنیم
         run: npx hardhat run scripts/deploy.cjs --network teqoin
