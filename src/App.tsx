@@ -86,6 +86,17 @@ export default function App() {
   const currentSymbol = isL2 ? "ETH" : "TEQ";
   const explorerUrl = isL2 ? "https://testnet-blockscan.teqoin.io/" : "https://explorer.teqoin.com";
 
+  // Synchronize swap and liquidity inputs when token addresses are updated in the Admin panel
+  useEffect(() => {
+    setSwapTokenIn(token0Address);
+    setPairTokenA(token0Address);
+  }, [token0Address]);
+
+  useEffect(() => {
+    setSwapTokenOut(token1Address);
+    setPairTokenB(token1Address);
+  }, [token1Address]);
+
   // Check Metamask state on mount
   useEffect(() => {
     checkMetaMaskOnMount();
@@ -191,13 +202,13 @@ export default function App() {
       const tempRpcProvider = new ethers.JsonRpcProvider(rpcUrl.trim());
       
       const factoryContract = new ethers.Contract(
-        factoryAddress.trim(),
+        factoryAddress.trim().toLowerCase(),
         ["function getPair(address tokenA, address tokenB) external view returns (address pair)"],
         tempRpcProvider
       );
 
       setPoolStatusText(language === "fa" ? "در حال بررسی وضعیت جفت در بلاکچین تستی..." : "Querying reserves metadata index from block...");
-      const pair = await factoryContract.getPair(token0Address.trim(), token1Address.trim());
+      const pair = await factoryContract.getPair(token0Address.trim().toLowerCase(), token1Address.trim().toLowerCase());
       
       if (!pair || pair === ethers.ZeroAddress) {
         setPairAddressResult(ethers.ZeroAddress);
@@ -206,10 +217,10 @@ export default function App() {
         return;
       }
 
-      setPairAddressResult(pair);
+      setPairAddressResult(pair.toLowerCase());
 
       const pairContract = new ethers.Contract(
-        pair,
+        pair.toLowerCase(),
         [
           "function getReserves() external view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast)",
           "function token0() external view returns (address)"
@@ -252,12 +263,12 @@ export default function App() {
     try {
       const signer = await provider.getSigner();
       const factoryContract = new ethers.Contract(
-        factoryAddress.trim(),
+        factoryAddress.trim().toLowerCase(),
         ["function createPair(address tokenA, address tokenB) external returns (address pair)"],
         signer
       );
 
-      const tx = await factoryContract.createPair(pairTokenA.trim(), pairTokenB.trim());
+      const tx = await factoryContract.createPair(pairTokenA.trim().toLowerCase(), pairTokenB.trim().toLowerCase());
       setTxHashResult(tx.hash);
       
       await tx.wait();
@@ -283,14 +294,14 @@ export default function App() {
     setApproveTxMining(true);
     setSwapStatusText("");
     try {
-      const signer = await provider.getSigner();
+      const signer = await provider.Signer ? await provider.getSigner() : provider.getSigner();
       const tokenContract = new ethers.Contract(
-        swapTokenIn.trim(),
+        swapTokenIn.trim().toLowerCase(),
         ["function approve(address spender, uint256 amount) external returns (bool)"],
         signer
       );
       const amountToApprove = ethers.parseUnits(swapAmountIn || "1000", 18);
-      const tx = await tokenContract.approve(routerAddress.trim(), amountToApprove);
+      const tx = await tokenContract.approve(routerAddress.trim().toLowerCase(), amountToApprove);
       setApproveTxHash(tx.hash);
       setSwapStatusText(language === "fa" ? "تراکنش تاییدیه (Approve) ارسال شد. منتظر تایید..." : "Approve transaction broadcasted. Waiting for confirmation...");
       await tx.wait();
@@ -326,7 +337,7 @@ export default function App() {
     try {
       const signer = await provider.getSigner();
       const routerContract = new ethers.Contract(
-        routerAddress.trim(),
+        routerAddress.trim().toLowerCase(),
         swapType === "eth_to_tokens"
           ? ["function swapExactETHForTokens(uint amountOutMin, address[] calldata path, address to, uint deadline) external payable returns (uint[] memory amounts)"]
           : ["function swapExactTokensForTokens(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) external returns (uint[] memory amounts)"],
@@ -340,7 +351,7 @@ export default function App() {
       let tx;
       if (swapType === "eth_to_tokens") {
         const amountInWei = ethers.parseEther(swapAmountIn);
-        const path = [wethAddress.trim(), swapTokenOut.trim()];
+        const path = [wethAddress.trim().toLowerCase(), swapTokenOut.trim().toLowerCase()];
         setSwapStatusText(language === "fa" ? "در حال ارسال تراکنش سواپ اتریوم..." : "Sending ETH swap transaction...");
         tx = await routerContract.swapExactETHForTokens(
           finalAmountOutMin,
@@ -351,7 +362,7 @@ export default function App() {
         );
       } else {
         const amountInUnits = ethers.parseUnits(swapAmountIn, 18);
-        const path = [swapTokenIn.trim(), swapTokenOut.trim()];
+        const path = [swapTokenIn.trim().toLowerCase(), swapTokenOut.trim().toLowerCase()];
         setSwapStatusText(language === "fa" ? "در حال ارسال تراکنش سواپ توکن به توکن..." : "Sending token to token swap transaction...");
         tx = await routerContract.swapExactTokensForTokens(
           amountInUnits,
