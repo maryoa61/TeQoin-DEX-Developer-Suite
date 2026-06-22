@@ -49,8 +49,8 @@ export function getProjectFiles(config: {
 }`
     },
     {
-      name: "hardhat.config.js",
-      path: "hardhat.config.js",
+      name: "hardhat.config.cjs",
+      path: "hardhat.config.cjs",
       language: "javascript",
       descriptionFa: "پیکربندی بهینه شده هارد‌هت برای شبکه TeQoin با پشتیبانی از چند نسخه کامپایلر.",
       descriptionEn: "Optimized Hardhat configuration file supporting multiple compiler versions for TeQoin.",
