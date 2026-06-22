@@ -21,15 +21,14 @@ jobs:
           cache: "npm"
 
       - name: Install dependencies
-        # این دستور هم پکیج‌های پروژه رو نصب می‌کنه هم OpenZeppelin که اضافه کردی
         run: npm install
 
       - name: Run Hardhat Compiler
-        run: ./node_modules/.bin/hardhat compile
+        run: npx hardhat compile
 
       - name: Deploy Contracts
         env:
           PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
           TEQOIN_RPC_URL: ${{ secrets.TEQOIN_RPC_URL || 'https://rpc.teqoin.com' }}
-        # در اینجا می‌تونی با تغییر این دستور، اسکریپت‌های مختلف رو اجرا کنی
-        run: ./node_modules/.bin/hardhat run scripts/deploy-token.js --network teqoin
+        # دقت کن: اینجا داریم فایلِ موجودِ تو (deploy.cjs) رو اجرا می‌کنیم
+        run: npx hardhat run scripts/deploy.cjs --network teqoin
