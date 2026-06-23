@@ -10,22 +10,18 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
         with:
           node-version: '18'
-
-      - name: Install dependencies
-        run: npm install
-
-      - name: Compile Contracts
-        run: npx hardhat compile
+      - run: npm install
+      - run: npx hardhat compile
+      
+      # این ترفند: دستی اضافه کردنِ آدرس به فایل hosts برای حلِ مشکلِ پیدا نشدنِ دامنه
+      - name: Fix DNS
+        run: echo "104.21.66.50 rpc-testnet.teqoin.io" | sudo tee -a /etc/hosts
 
       - name: Deploy to Teqoin
         run: npx hardhat run scripts/deploy.cjs --network teqoinTestnet
         env:
           PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
-          TEQOIN_RPC_URL: "https://rpc.teqoin.io"
