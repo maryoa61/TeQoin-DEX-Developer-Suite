@@ -1,20 +1,29 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# TeQoin-DEX-Developer-Suite 🚀
 
-# Run and deploy your AI Studio app
+This project is the result of a grueling marathon fighting GitHub Actions errors, Teqoin network quirks, and various technical hurdles. We have successfully implemented the necessary infrastructure to deploy smart contracts on this network.
 
-This contains everything you need to run your app locally.
+## 📌 Contract Status
+The smart contract has been successfully deployed to the Teqoin mainnet:
 
-View your app in AI Studio: https://ai.studio/apps/8bc0a3fc-65dc-4fc3-9717-57b47de43711
+* **Contract Address:** `0x98A05F6dc058be0278fB9760D532f6577f2119D1`
+* **Status:** Deployed & Active
 
-## Run Locally
+## 🛠 Tools Used
+* **Solidity:** Compiled with versions 0.8.20, 0.6.6, and 0.5.16.
+* **Environment:** Hardhat (Node v18.20.8).
+* **Automation:** GitHub Actions (CI/CD Pipeline).
 
-**Prerequisites:**  Node.js
+## 🚀 Key Features
+* **Automated Deployment:** Deploy your contracts instantly just by pushing code, without manual interventions.
+* **DNS Resolution Fix:** Overcame `ENOTFOUND` network limitations using custom host configurations in GitHub runner environments.
+* **Multi-Version Support:** Smart compiler configuration to handle different Solidity versions simultaneously.
 
+## 📖 Developer Guide
+To develop or build upon this project:
+1. Clone the repository.
+2. Run `npm install` to install dependencies.
+3. Create a `.env` file and set your `PRIVATE_KEY`.
+4. Use the command `npx hardhat run scripts/deploy.cjs --network teqoin` to deploy.
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+---
+*Built with persistence and relentless debugging!*
