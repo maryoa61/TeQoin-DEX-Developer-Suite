@@ -1,15 +1,31 @@
+name: Deploy Contracts
 
-name: Deploy
-on: [push, workflow_dispatch]
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-        with: { node-version: '18' }
-      - run: npm install
-      - run: npx hardhat compile
-      - run: npx hardhat run scripts/deploy.cjs --network teqoinTestnet
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Compile Contracts
+        run: npx hardhat compile
+
+      - name: Deploy to Teqoin
+        run: npx hardhat run scripts/deploy.cjs --network teqoinTestnet
         env:
           PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
+          TEQOIN_RPC_URL: "https://rpc.teqoin.io"
