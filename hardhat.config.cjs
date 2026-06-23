@@ -2,41 +2,20 @@
 require("@nomicfoundation/hardhat-toolbox");
 require("dotenv").config();
 
-// Load values safely from environment variables
-const PRIVATE_KEY = process.env.PRIVATE_KEY || "";
-const TEQOIN_RPC_URL = process.env.TEQOIN_RPC_URL || "https://rpc-testnet.teqoin.io";
-
 module.exports = {
-  solidity: {
-    compilers: [
-      {
-        version: "0.5.16",
-        settings: {
-          optimizer: {
-            enabled: true,
-            runs: 999999
-          }
-        }
-      },
-      {
-        version: "0.6.6",
-        settings: {
-          optimizer: {
-            enabled: true,
-            runs: 999999
-          }
-        }
-      }
-    ]
-  },
+  solidity: "0.8.20",
   networks: {
-    hardhat: {},
+    // این شبکه اصلی
     teqoin: {
-      url: TEQOIN_RPC_URL,
-      accounts: PRIVATE_KEY ? [PRIVATE_KEY] : [],
-      chainId: 420713,
-      gas: "auto",
-      gasPrice: "auto"
+      url: "https://rpc.teqoin.io",
+      chainId: 420377,
+      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : []
+    },
+    // این شبکه آزمایشی (دقیقاً طبق مستندات تصویر)
+    teqoinTestnet: {
+      url: "https://rpc-testnet.teqoin.io",
+      chainId: 420377, // همان عددی که در تصویر بود
+      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : []
     }
   }
 };
