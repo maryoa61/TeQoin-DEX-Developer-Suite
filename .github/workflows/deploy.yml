@@ -18,11 +18,19 @@ jobs:
         with:
           node-version: '18'
 
+      # مرحله نصب پکیج‌ها با قدرتِ بالا
       - name: Install dependencies
-        run: npm install
+        run: |
+          npm install
+          npm install @openzeppelin/contracts --save-dev
 
+      # کامپایلِ قراردادها برای اینکه مطمئن شیم OpenZeppelin شناسایی شد
+      - name: Compile Contracts
+        run: npx hardhat compile
+
+      # دیپلوی نهایی
       - name: Deploy to Teqoin
-        run: npx hardhat run scripts/deploy.cjs --network teqoin
+        run: npx hardhat run scripts/deploy.cjs --network teqoinTestnet
         env:
           PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
           TEQOIN_RPC_URL: ${{ secrets.TEQOIN_RPC_URL }}
