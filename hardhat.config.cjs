@@ -1,9 +1,10 @@
+
 require("@nomicfoundation/hardhat-toolbox");
 require("dotenv").config();
 
 // Load values safely from environment variables
 const PRIVATE_KEY = process.env.PRIVATE_KEY || "";
-const TEQOIN_RPC_URL = process.env.TEQOIN_RPC_URL || "https://rpc.teqoin.io";
+const TEQOIN_RPC_URL = process.env.TEQOIN_RPC_URL || "https://rpc-testnet.teqoin.io";
 
 module.exports = {
   solidity: {
@@ -33,7 +34,7 @@ module.exports = {
     teqoin: {
       url: TEQOIN_RPC_URL,
       accounts: PRIVATE_KEY ? [PRIVATE_KEY] : [],
-      chainId: 420377,
+      chainId: 420713,
       gas: "auto",
       gasPrice: "auto"
     }
