@@ -1,20 +1,19 @@
-
 require("@nomicfoundation/hardhat-toolbox");
 require("dotenv").config();
 
 module.exports = {
-  solidity: "0.8.20",
+  solidity: {
+    compilers: [
+      { version: "0.8.20" },
+      { version: "0.6.6" },
+      { version: "0.5.16" }
+    ],
+    settings: { optimizer: { enabled: true, runs: 200 } }
+  },
   networks: {
-    // این شبکه اصلی
-    teqoin: {
-      url: "https://rpc.teqoin.io",
-      chainId: 420377,
-      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : []
-    },
-    // این شبکه آزمایشی (دقیقاً طبق مستندات تصویر)
     teqoinTestnet: {
       url: "https://rpc-testnet.teqoin.io",
-      chainId: 420377, // همان عددی که در تصویر بود
+      chainId: 420377,
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : []
     }
   }
