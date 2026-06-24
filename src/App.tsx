@@ -492,6 +492,8 @@ export default function App() {
               swapStatusText={swapStatusText}
               triggerApproveForSwap={triggerApproveForSwap}
               triggerExecuteSwap={triggerExecuteSwap}
+              rpcUrl={rpcUrl}
+              factoryAddress={factoryAddress}
             />
           ) : (
             <LiquidityTab

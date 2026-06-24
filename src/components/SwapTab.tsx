@@ -1,5 +1,6 @@
-import React, { FormEvent, useState } from "react";
-import { ArrowLeftRight, Check, RefreshCw, Info, ArrowUpRight, HelpCircle, Search, Plus, X } from "lucide-react";
+import React, { FormEvent, useState, useEffect } from "react";
+import { ArrowLeftRight, Check, RefreshCw, Info, ArrowUpRight, HelpCircle, Search, Plus, X, AlertTriangle } from "lucide-react";
+import { ethers } from "ethers";
 import { SwapTabProps } from "../types";
 
 export interface TokenItem {
@@ -34,16 +35,149 @@ export function SwapTab({
   swapStatusText,
   triggerApproveForSwap,
   triggerExecuteSwap,
+  rpcUrl,
+  factoryAddress,
 }: SwapTabProps) {
   // Token selection states
   const [isSelectingFor, setIsSelectingFor] = useState<"in" | "out" | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [customTokens, setCustomTokens] = useState<TokenItem[]>([]);
 
+  // Price Calculation & Impact states
+  const [priceImpactPercent, setPriceImpactPercent] = useState<number | null>(null);
+  const [estimatedOutput, setEstimatedOutput] = useState<string | null>(null);
+  const [poolWarning, setPoolWarning] = useState<string | null>(null);
+  const [isQueryingPool, setIsQueryingPool] = useState(false);
+
   // Calculate local fallback safe addresses to guard against empty strings
   const activeWeth = wethAddress || "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2";
   const activeT0 = token0Address || "0x6cC35D27dEc15F8adeC439cD969989B0b03D5979";
   const activeT1 = token1Address || "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2";
+
+  // Reactive price calculator & pool reserves index lookup
+  useEffect(() => {
+    let active = true;
+
+    async function queryReservesAndCalculate() {
+      if (!rpcUrl || !factoryAddress) return;
+      
+      const inputAmountFloat = parseFloat(swapAmountIn);
+      if (isNaN(inputAmountFloat) || inputAmountFloat <= 0) {
+        if (active) {
+          setPriceImpactPercent(null);
+          setEstimatedOutput(null);
+          setPoolWarning(null);
+        }
+        return;
+      }
+
+      const tokenInAddr = swapType === "eth_to_tokens" ? activeWeth : swapTokenIn;
+      const tokenOutAddr = swapTokenOut;
+
+      if (!tokenInAddr || !tokenOutAddr || tokenInAddr.toLowerCase() === tokenOutAddr.toLowerCase()) {
+        if (active) {
+          setPriceImpactPercent(null);
+          setEstimatedOutput(null);
+          setPoolWarning(null);
+        }
+        return;
+      }
+
+      try {
+        if (active) setIsQueryingPool(true);
+        const providerObj = new ethers.JsonRpcProvider(rpcUrl.trim());
+        const factoryContract = new ethers.Contract(
+          factoryAddress.trim().toLowerCase(),
+          ["function getPair(address tokenA, address tokenB) external view returns (address pair)"],
+          providerObj
+        );
+
+        const pair = await factoryContract.getPair(tokenInAddr.trim().toLowerCase(), tokenOutAddr.trim().toLowerCase());
+        
+        if (!pair || pair === ethers.ZeroAddress) {
+          if (active) {
+            setPriceImpactPercent(null);
+            setEstimatedOutput(null);
+            setPoolWarning(language === "fa" 
+              ? "استخر نقدینگی بر روی قرارداد هوشمند برای این جفت ارز یافت نشد. سواپ ناموفق خواهد بود." 
+              : "Liquidity pool address not found for this pair. Swap execution will fail."
+            );
+            setIsQueryingPool(false);
+          }
+          return;
+        }
+
+        const pairContract = new ethers.Contract(
+          pair.toLowerCase(),
+          [
+            "function getReserves() external view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast)",
+            "function token0() external view returns (address)"
+          ],
+          providerObj
+        );
+
+        const [reserves, t0] = await Promise.all([
+          pairContract.getReserves(),
+          pairContract.token0()
+        ]);
+
+        const r0 = parseFloat(ethers.formatEther(reserves.reserve0));
+        const r1 = parseFloat(ethers.formatEther(reserves.reserve1));
+
+        let resIn = 0;
+        let resOut = 0;
+
+        if (t0.toLowerCase() === tokenInAddr.trim().toLowerCase()) {
+          resIn = r0;
+          resOut = r1;
+        } else {
+          resIn = r1;
+          resOut = r0;
+        }
+
+        if (resIn === 0 || resOut === 0) {
+          if (active) {
+            setPriceImpactPercent(null);
+            setEstimatedOutput(null);
+            setPoolWarning(language === "fa" 
+              ? "این استخر نقدینگی خالی است یا موجودی ندارد." 
+              : "This liquidity pool reserves are completely empty."
+            );
+            setIsQueryingPool(false);
+          }
+          return;
+        }
+
+        // Standard Uniswap constant product output estimation
+        const amountInWithFee = inputAmountFloat * 0.997;
+        const outEst = (resOut * amountInWithFee) / (resIn + amountInWithFee);
+
+        // Price Impact percentage formula (Pure price impact = (amountIn / (reserveIn + amountIn)) * 100)
+        const impact = (inputAmountFloat / (resIn + inputAmountFloat)) * 100;
+
+        if (active) {
+          setPriceImpactPercent(impact);
+          setEstimatedOutput(outEst.toFixed(6));
+          setPoolWarning(null);
+          setIsQueryingPool(false);
+        }
+
+      } catch (err) {
+        console.error("Reserve fetching failed:", err);
+        if (active) {
+          setPriceImpactPercent(null);
+          setEstimatedOutput(null);
+          setIsQueryingPool(false);
+        }
+      }
+    }
+
+    queryReservesAndCalculate();
+
+    return () => {
+      active = false;
+    };
+  }, [swapAmountIn, swapTokenIn, swapTokenOut, swapType, rpcUrl, factoryAddress, activeWeth, activeT0, activeT1, language]);
 
   // Pre-configured list of mock and test tokens
   const presetTokens: TokenItem[] = [
@@ -323,6 +457,91 @@ export function SwapTab({
             </p>
           </div>
 
+          {/* Estimated Output and Price Impact Calculations */}
+          {(isQueryingPool || estimatedOutput !== null || priceImpactPercent !== null || poolWarning !== null) && (
+            <div className="bg-slate-950/80 border border-slate-850 p-4 rounded-2xl space-y-3">
+              <div className="flex justify-between items-center text-xs font-mono">
+                <span className="text-slate-400">
+                  {language === "fa" ? "موجودی خروجی تخمینی:" : "Estimated Output:"}
+                </span>
+                {isQueryingPool ? (
+                  <span className="flex items-center gap-1.5 text-emerald-400">
+                    <RefreshCw className="w-3 h-3 animate-spin" />
+                    <span className="text-[10px]">{language === "fa" ? "در حال محاسبه..." : "Calculating..."}</span>
+                  </span>
+                ) : estimatedOutput ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-100 font-bold">{estimatedOutput} {displayOutToken.symbol}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        // Autofill minimum receive out with a standard 0.5% slippage (output * 0.995)
+                        const estVal = parseFloat(estimatedOutput);
+                        if (!isNaN(estVal)) {
+                          const withSlippage = estVal * 0.995;
+                          setSwapAmountOutMin(withSlippage.toFixed(6));
+                        }
+                      }}
+                      className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-[9px] font-sans font-bold px-2 py-0.5 rounded transition cursor-pointer border border-emerald-500/20"
+                    >
+                      {language === "fa" ? "اعمال لغزش ۰.۵٪" : "Apply 0.5% Slippage"}
+                    </button>
+                  </div>
+                ) : (
+                  <span className="text-slate-500">-</span>
+                )}
+              </div>
+
+              {priceImpactPercent !== null && (
+                <div className="flex justify-between items-center text-xs font-mono border-t border-slate-900/60 pt-2">
+                  <span className="text-slate-400">
+                    {language === "fa" ? "اثر قیمتی (Price Impact):" : "Price Impact:"}
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    {priceImpactPercent < 1.0 ? (
+                      <span className="text-emerald-400 font-bold bg-emerald-500/5 px-2 py-0.5 rounded border border-emerald-500/10 text-[11px]">
+                        {priceImpactPercent.toFixed(2)}% ({language === "fa" ? "عادی" : "Minimal"})
+                      </span>
+                    ) : priceImpactPercent < 5.0 ? (
+                      <span className="text-amber-400 font-bold bg-amber-500/5 px-2 py-0.5 rounded border border-amber-500/10 text-[11px]">
+                        {priceImpactPercent.toFixed(2)}% ({language === "fa" ? "متوسط" : "Moderate"})
+                      </span>
+                    ) : (
+                      <span className="text-rose-450 font-bold bg-rose-500/5 text-rose-400 px-2 py-0.5 rounded border border-rose-500/10 text-[11px] animate-pulse">
+                        {priceImpactPercent.toFixed(2)}% ({language === "fa" ? "بسیار بالا!" : "Extremely High!"})
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* High slippage / High price impact warning banner */}
+              {priceImpactPercent !== null && priceImpactPercent >= 5.0 && (
+                <div className="p-3 bg-rose-500/5 border border-rose-500/20 text-rose-300 text-[10px] rounded-xl leading-relaxed flex gap-2">
+                  <AlertTriangle className="w-4 h-4 text-rose-400 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-bold block text-rose-400 mb-0.5">
+                      {language === "fa" ? "هشدار: اثر قیمتی خطرناک!" : "Warning: Dangerous Price Impact!"}
+                    </span>
+                    <span>
+                      {language === "fa"
+                        ? "شما در حال خرید درصد بزرگی از نقدینگی این استخر هستید. این تراکنش با نوسان شدید قیمت (Slippage) مواجه شده و ممکن است دارایی زیادی از شما کسر شود."
+                        : "You are trading a substantial ratio of the pool assets. This leads to heavy price slippage and might result in significant loss."}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Pool Warning Banner */}
+              {poolWarning && (
+                <div className="p-3 bg-amber-500/5 border border-amber-500/20 text-amber-300 text-[10px] rounded-xl leading-relaxed flex gap-2">
+                  <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+                  <span>{poolWarning}</span>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Dynamic Address Informational Badge Footnotes */}
           <div className="p-3.5 bg-slate-950/40 rounded-2xl border border-slate-850/80 space-y-2">
             <div className="flex items-center justify-between text-[11px] font-mono text-slate-400">
@@ -438,6 +657,36 @@ export function SwapTab({
             </button>
           </div>
         </form>
+      </div>
+
+      {/* Troubleshooting guide Accordion or Panel */}
+      <div className="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-4 mt-4 space-y-3">
+        <h4 className="text-xs font-bold text-amber-400 flex items-center gap-1.5 font-sans">
+          <HelpCircle className="w-4 h-4 text-amber-400" />
+          <span>{language === "fa" ? "راهنمای حل مشکلات و اتصال ولت (MetaMask)" : "Troubleshooting & Wallet Guide"}</span>
+        </h4>
+        <div className="space-y-2.5 text-[11px] text-slate-350 leading-relaxed font-sans">
+          <div className="bg-slate-950/50 p-3 rounded-xl border border-slate-900">
+            <span className="font-bold text-amber-300 block mb-1">
+              {language === "fa" ? "۱. چرا دکمه «اتصال ولت» باز نمی‌شود؟" : "1. Connect Wallet button doesn't trigger?"}
+            </span>
+            <p>
+              {language === "fa"
+                ? "به دلیل قوانین امنیتی مروگرها در قاب‌های تستی (iFrame sandbox)، افزونه متامسک مجاز به باز شدن داخل این بخش کوچک نیست. برای فعال‌سازی کامل، حتماً صرافی را در یک تب مجزا با دکمه «نمایش در تب جدید» (Open in New Tab - آیکون مربع با فلش در بالای کادر پیش‌نمایش چت) باز کنید تا همه پاپ‌آپ‌ها بدون مشکل کار کنند."
+                : "For security reasons inside browser simulator iFrames, MetaMask popups cannot be triggered directly here. Please click the 'Open in New Tab' icon located above this preview window to launch the DEX in a full tab and execute operations seamlessly."}
+            </p>
+          </div>
+          <div className="bg-slate-950/50 p-3 rounded-xl border border-slate-900">
+            <span className="font-bold text-amber-300 block mb-1">
+              {language === "fa" ? "۲. خطا در سواپ: بروز خطای قرمز رنگ 'insufficient funds' (موجودی ناكافی)" : "2. Swap error: Red 'insufficient funds' banner?"}
+            </span>
+            <p>
+              {language === "fa"
+                ? "این یعنی تراکنش به درستی برای متامسک ارسال شده اما آدرس ولت متصل‌شده شما فاقد اعتبار کافی (TEQ یا ETH) برای خرید یا پرداخت کارمزد تراکنش (گاز) است. ابتدا با کپی کردن آدرس ولت خود آن را از طریق شیر آب تستی (Faucet) شارژ کنید و سپس مبادله را نهایی کنید."
+                : "This confirms MetaMask is successfully connected but your address has zero/low native coins to pay the swap inputs + gas. Copy your address and fund it via the testnet faucet before trying again."}
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Screen 2: Absolute Laid-over Token Selector Modal */}

@@ -41,6 +41,8 @@ export interface SwapTabProps {
   swapStatusText: string;
   triggerApproveForSwap: () => Promise<void>;
   triggerExecuteSwap: (e: FormEvent) => Promise<void>;
+  rpcUrl?: string;
+  factoryAddress?: string;
 }
 
 export interface LiquidityTabProps {
