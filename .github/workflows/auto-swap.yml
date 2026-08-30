@@ -1,0 +1,59 @@
+# .github/workflows/auto-swap.yml
+name: Robinhood Testnet Auto-Swap Bot
+
+on:
+  schedule:
+    # Runs every 3 hours automatically
+    - cron: '0 */3 * * *'
+  workflow_dispatch: # Allows manual execution from GitHub Actions UI
+
+jobs:
+  swap:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      # Install forge-std and other dependencies automatically
+      - name: Install Foundry Dependencies (forge-std)
+        run: |
+          if [ ! -d "lib/forge-std" ]; then
+            echo "📦 Installing forge-std library..."
+            forge install foundry-rs/forge-std --no-commit
+          else
+            echo "✅ forge-std library already installed."
+          fi
+
+      - name: Compile Solidity Contracts
+        run: |
+          echo "🔨 Compiling and validating Solidity code..."
+          forge build
+
+      # Add randomized delay to randomize swapper times
+      - name: Randomize Timing
+        run: |
+          delay=$((1 + RANDOM % 60))
+          echo "💤 Random sleep for $delay minutes to randomize the swap time..."
+          sleep $((delay * 60))
+
+      - name: Execute Foundry Swapper Script
+        run: |
+          forge script script/AutoSwapper.s.sol:AutoSwapperScript \
+            --rpc-url "${{ secrets.RPC_URL }}" \
+            --broadcast \
+            --slow \
+            -vvvv
+        env:
+          TOKEN_A: ${{ secrets.TOKEN_A }}
+          TOKEN_B: ${{ secrets.TOKEN_B }}
+          KEY_1: ${{ secrets.KEY_1 }}
+          KEY_2: ${{ secrets.KEY_2 }}
+          KEY_3: ${{ secrets.KEY_3 }}
