@@ -30,5 +30,11 @@ jobs:
         env:
           PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
           TEQOIN_RPC_URL: ${{ secrets.TEQOIN_RPC_URL || 'https://rpc.teqoin.io' }}
-          WETH_ADDRESS: ${{ secrets.WETH_ADDRESS || '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2' }}
+          # No default here on purpose: the old fallback
+          # (0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2) is Ethereum
+          # MAINNET's WETH address and does not exist on TeQoin. deploy.cjs
+          # now requires WETH_ADDRESS to be explicitly set and will fail
+          # loudly with instructions if this secret is missing, instead of
+          # silently deploying a broken Router.
+          WETH_ADDRESS: ${{ secrets.WETH_ADDRESS }}
         run: npx hardhat run scripts/deploy.cjs --network teqoin
