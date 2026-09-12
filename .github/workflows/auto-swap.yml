@@ -20,7 +20,7 @@ jobs:
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
-          version: nightly
+          version: stable
 
       # Install forge-std and other dependencies automatically
       - name: Install Foundry Dependencies (forge-std)
@@ -36,6 +36,27 @@ jobs:
         run: |
           echo "🔨 Compiling and validating Solidity code..."
           forge build
+
+      # Validate that mandatory GitHub secrets are provided
+      - name: Verify Configuration & Secrets
+        run: |
+          echo "🔍 Checking required secrets..."
+          if [ -z "${{ secrets.RPC_URL }}" ]; then
+            echo "❌ Error: RPC_URL secret is missing in GitHub Repository Secrets!"
+            echo "➡️ Go to your GitHub repo -> Settings -> Secrets and variables -> Actions -> Add 'RPC_URL'"
+            exit 1
+          fi
+          if [ -z "${{ secrets.KEY_1 }}" ]; then
+            echo "❌ Error: KEY_1 secret is missing in GitHub Repository Secrets!"
+            echo "➡️ Go to your GitHub repo -> Settings -> Secrets and variables -> Actions -> Add 'KEY_1'"
+            exit 1
+          fi
+          if [ -z "${{ secrets.TOKEN_A }}" ] || [ -z "${{ secrets.TOKEN_B }}" ]; then
+            echo "❌ Error: TOKEN_A or TOKEN_B secret is missing!"
+            echo "➡️ Please set TOKEN_A and TOKEN_B in your GitHub repository secrets."
+            exit 1
+          fi
+          echo "✅ All required secrets are present."
 
       # Add randomized delay to randomize swapper times
       - name: Randomize Timing
@@ -54,6 +75,7 @@ jobs:
         env:
           TOKEN_A: ${{ secrets.TOKEN_A }}
           TOKEN_B: ${{ secrets.TOKEN_B }}
+          ROUTER_ADDRESS: ${{ secrets.ROUTER_ADDRESS }}
           KEY_1: ${{ secrets.KEY_1 }}
           KEY_2: ${{ secrets.KEY_2 }}
           KEY_3: ${{ secrets.KEY_3 }}
