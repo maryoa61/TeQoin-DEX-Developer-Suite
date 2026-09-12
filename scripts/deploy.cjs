@@ -17,7 +17,7 @@ async function main() {
   console.log("====================================================");
   console.log("Starting real-world deployment on TeQoin Network...");
   console.log("Deployer account:", deployer.address);
-  
+
   const balance = await deployer.provider.getBalance(deployer.address);
   console.log("Account balance:", hre.ethers.formatEther(balance), "TEQ");
   console.log("====================================================");
@@ -39,18 +39,48 @@ async function main() {
   console.log("----------------------------------------------------");
 
   // 2. Wrapped Native configuration (WETH address)
-  // Feel free to replace this with your network's actual wrapped token address
-  const wethAddress = (process.env.WETH_ADDRESS || "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").toLowerCase();
+  //
+  // IMPORTANT: There is no safe default here. The previous fallback value
+  // (0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2) is the real WETH contract
+  // on ETHEREUM MAINNET. It does not exist on the TeQoin network (chainId
+  // 420377), so silently falling back to it would deploy a Router pointed
+  // at a meaningless address on this chain -- every ETH-based swap function
+  // (swapExactETHForTokens, swapExactTokensForETH, etc.) would then be
+  // broken in a way that's easy to miss until a real user hits it.
+  //
+  // Instead, we require WETH_ADDRESS to be explicitly set and fail loudly
+  // if it isn't.
+  const wethAddress = process.env.WETH_ADDRESS;
+
+  if (!wethAddress) {
+    console.error("====================================================");
+    console.error("❌ ERROR: WETH_ADDRESS environment variable is not set!");
+    console.error("There is no safe default wrapped-native-token address for the TeQoin network.");
+    console.error("To fix this:");
+    console.error("1. Deploy (or find) the wrapped native token contract for TeQoin.");
+    console.error("2. Go to your GitHub repository: https://github.com/maryoa61/TeQoin-DEX-Developer-Suite");
+    console.error("3. Navigate to Settings -> Secrets and variables -> Actions");
+    console.error("4. Add a Repository Secret named 'WETH_ADDRESS' with that contract's address.");
+    console.error("====================================================");
+    process.exit(1);
+  }
+
+  const normalizedWethAddress = wethAddress.toLowerCase();
+  if (!hre.ethers.isAddress(normalizedWethAddress)) {
+    console.error("❌ ERROR: WETH_ADDRESS is set but is not a valid address:", wethAddress);
+    process.exit(1);
+  }
+
   console.log("Step 2: Configuring Wrapped native token...");
-  console.log("WETH address used for Router deployment:", wethAddress);
+  console.log("WETH address used for Router deployment:", normalizedWethAddress);
   console.log("----------------------------------------------------");
 
   // 3. Deploy Router
   console.log("Step 3: Deploying UniswapV2Router02...");
-  console.log("Parameters -> Factory:", factoryAddress, "| WETH:", wethAddress);
+  console.log("Parameters -> Factory:", factoryAddress, "| WETH:", normalizedWethAddress);
 
   const UniswapV2Router02 = await hre.ethers.getContractFactory("UniswapV2Router02");
-  const router = await UniswapV2Router02.deploy(factoryAddress, wethAddress);
+  const router = await UniswapV2Router02.deploy(factoryAddress, normalizedWethAddress);
   await router.waitForDeployment();
   const routerAddress = await router.getAddress();
 
