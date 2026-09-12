@@ -2,6 +2,7 @@ import React, { FormEvent, useState, useEffect } from "react";
 import { ArrowLeftRight, Check, RefreshCw, Info, ArrowUpRight, HelpCircle, Search, Plus, X, AlertTriangle } from "lucide-react";
 import { ethers } from "ethers";
 import { SwapTabProps } from "../types";
+import { TEQOIN_TOKENS, DEFAULT_WETH, DEFAULT_TOKEN_0, DEFAULT_TOKEN_1, findTokenByAddress } from "../tokens.config";
 
 export interface TokenItem {
   symbol: string;
@@ -50,9 +51,9 @@ export function SwapTab({
   const [isQueryingPool, setIsQueryingPool] = useState(false);
 
   // Calculate local fallback safe addresses to guard against empty strings
-  const activeWeth = wethAddress || "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2";
-  const activeT0 = token0Address || "0x6cC35D27dEc15F8adeC439cD969989B0b03D5979";
-  const activeT1 = token1Address || "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2";
+  const activeWeth = wethAddress || DEFAULT_WETH.address;
+  const activeT0 = token0Address || DEFAULT_TOKEN_0.address;
+  const activeT1 = token1Address || DEFAULT_TOKEN_1.address;
 
   // Reactive price calculator & pool reserves index lookup
   useEffect(() => {
@@ -179,7 +180,7 @@ export function SwapTab({
     };
   }, [swapAmountIn, swapTokenIn, swapTokenOut, swapType, rpcUrl, factoryAddress, activeWeth, activeT0, activeT1, language]);
 
-  // Pre-configured list of mock and test tokens
+  // Verified TeQoin Testnet tokens list (Chain ID: 420377)
   const presetTokens: TokenItem[] = [
     {
       symbol: currentSymbol,
@@ -188,50 +189,57 @@ export function SwapTab({
       logo: "💎",
     },
     {
-      symbol: `W${currentSymbol}`,
-      name: `Wrapped ${currentSymbol}`,
+      symbol: "WETH",
+      name: "Wrapped Ether (TeQoin)",
       address: activeWeth,
       logo: "🌀",
     },
     {
-      symbol: "TST0",
-      name: "TaQoin Test Token 0",
-      address: activeT0,
-      logo: "🦄",
+      symbol: TEQOIN_TOKENS.USDT.symbol,
+      name: TEQOIN_TOKENS.USDT.name,
+      address: TEQOIN_TOKENS.USDT.address,
+      logo: TEQOIN_TOKENS.USDT.logo,
     },
     {
-      symbol: "TST1",
-      name: "TaQoin Test Token 1",
-      address: activeT1,
-      logo: "🦁",
+      symbol: TEQOIN_TOKENS.USDC.symbol,
+      name: TEQOIN_TOKENS.USDC.name,
+      address: TEQOIN_TOKENS.USDC.address,
+      logo: TEQOIN_TOKENS.USDC.logo,
     },
     {
-      symbol: "TST2",
-      name: "Uniswap Test Token 2",
-      address: "0x1111111111111111111111111111111111111111",
-      logo: "🪙",
+      symbol: TEQOIN_TOKENS.DAI.symbol,
+      name: TEQOIN_TOKENS.DAI.name,
+      address: TEQOIN_TOKENS.DAI.address,
+      logo: TEQOIN_TOKENS.DAI.logo,
     },
     {
-      symbol: "TST3",
-      name: "Chainlink Test Token 3",
-      address: "0x2222222222222222222222222222222222222222",
-      logo: "🧪",
-    },
-    {
-      symbol: "WBTC",
-      name: "Wrapped Bitcoin",
-      address: "0x3333333333333333333333333333333333333333",
-      logo: "₿",
-    },
-    {
-      symbol: "USDT",
-      name: "Tether USD",
-      address: "0x4444444444444444444444444444444444444444",
-      logo: "💵",
+      symbol: TEQOIN_TOKENS.TEQ.symbol,
+      name: TEQOIN_TOKENS.TEQ.name,
+      address: TEQOIN_TOKENS.TEQ.address,
+      logo: TEQOIN_TOKENS.TEQ.logo,
     },
   ];
 
-  const availableTokens = [...presetTokens, ...customTokens];
+  // Dynamically include active developer tokens if custom addresses are supplied via Admin Panel
+  const dynamicAdminTokens: TokenItem[] = [];
+  if (activeT0 && !presetTokens.some(t => t.address.toLowerCase() === activeT0.toLowerCase())) {
+    dynamicAdminTokens.push({
+      symbol: "TOKEN-0",
+      name: `Custom Token 0 (${activeT0.slice(0, 6)}...${activeT0.slice(-4)})`,
+      address: activeT0,
+      logo: "🦄",
+    });
+  }
+  if (activeT1 && !presetTokens.some(t => t.address.toLowerCase() === activeT1.toLowerCase()) && activeT1.toLowerCase() !== activeT0.toLowerCase()) {
+    dynamicAdminTokens.push({
+      symbol: "TOKEN-1",
+      name: `Custom Token 1 (${activeT1.slice(0, 6)}...${activeT1.slice(-4)})`,
+      address: activeT1,
+      logo: "🦁",
+    });
+  }
+
+  const availableTokens = [...presetTokens, ...dynamicAdminTokens, ...customTokens];
 
   // Map the current props states back to actual Token items for display
   const selectedInToken = swapType === "eth_to_tokens"
@@ -724,9 +732,9 @@ export function SwapTab({
             />
           </div>
 
-          {/* Shortcut Pills for ultra popular options */}
+          {/* Shortcut Pills for verified popular options */}
           <div className="flex flex-wrap gap-1.5 mb-4">
-            {presetTokens.slice(0, 4).map(tk => (
+            {presetTokens.map(tk => (
               <button
                 key={tk.symbol}
                 type="button"

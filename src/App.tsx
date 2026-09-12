@@ -10,12 +10,14 @@ import { Navbar } from "./components/Navbar";
 import { SwapTab } from "./components/SwapTab";
 import { LiquidityTab } from "./components/LiquidityTab";
 import { AdminPanel } from "./components/AdminPanel";
+import { DEFAULT_TOKEN_0, DEFAULT_TOKEN_1, DEFAULT_WETH, getTokenDisplay } from "./tokens.config";
+import { OnChainPairItem } from "./types";
 
 export default function App() {
   // Config state (Dynamic environment params)
   const [rpcUrl, setRpcUrl] = useState("https://rpc.teqoin.io");
   const [chainId, setChainId] = useState(420377);
-  const [wethAddress, setWethAddress] = useState("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2");
+  const [wethAddress, setWethAddress] = useState(DEFAULT_WETH.address);
   const [feeSetter, setFeeSetter] = useState("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266");
   const [projectName, setProjectName] = useState("teqoin-dex");
   
@@ -40,8 +42,8 @@ export default function App() {
   // DEX Interact State
   const [factoryAddress, setFactoryAddress] = useState("0x16A8861a12E3135e8Db32b4198d90c6100f28737");
   const [routerAddress, setRouterAddress] = useState("0x64c0481600d7C77FA113011Fc3d854b68766C311");
-  const [token0Address, setToken0Address] = useState("0x6cC35D27dEc15F8adeC439cD969989B0b03D5979");
-  const [token1Address, setToken1Address] = useState("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2");
+  const [token0Address, setToken0Address] = useState(DEFAULT_TOKEN_0.address);
+  const [token1Address, setToken1Address] = useState(DEFAULT_TOKEN_1.address);
   
   // Dynamic On-chain fetch results
   const [queryLoading, setQueryLoading] = useState(false);
@@ -49,18 +51,20 @@ export default function App() {
   const [reserve0Result, setReserve0Result] = useState("");
   const [reserve1Result, setReserve1Result] = useState("");
   const [poolStatusText, setPoolStatusText] = useState("");
+  const [allPairsList, setAllPairsList] = useState<OnChainPairItem[]>([]);
+  const [loadingPairs, setLoadingPairs] = useState(false);
 
   // Write contract states
-  const [pairTokenA, setPairTokenA] = useState("");
-  const [pairTokenB, setPairTokenB] = useState("");
+  const [pairTokenA, setPairTokenA] = useState(DEFAULT_TOKEN_0.address);
+  const [pairTokenB, setPairTokenB] = useState(DEFAULT_TOKEN_1.address);
   const [txMining, setTxMining] = useState(false);
   const [txHashResult, setTxHashResult] = useState("");
 
   // Swap states
   const [swapType, setSwapType] = useState<"eth_to_tokens" | "tokens_to_tokens">("eth_to_tokens");
   const [swapAmountIn, setSwapAmountIn] = useState("0.05");
-  const [swapTokenIn, setSwapTokenIn] = useState("0x6cC35D27dEc15F8adeC439cD969989B0b03D5979");
-  const [swapTokenOut, setSwapTokenOut] = useState("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2");
+  const [swapTokenIn, setSwapTokenIn] = useState(DEFAULT_TOKEN_0.address);
+  const [swapTokenOut, setSwapTokenOut] = useState(DEFAULT_TOKEN_1.address);
   const [swapAmountOutMin, setSwapAmountOutMin] = useState("0");
   const [swapTxMining, setSwapTxMining] = useState(false);
   const [approveTxMining, setApproveTxMining] = useState(false);
@@ -244,6 +248,86 @@ export default function App() {
     }
   };
 
+  // Query all pairs deployed on the Factory contract
+  const fetchAllPairs = async () => {
+    setLoadingPairs(true);
+    try {
+      const tempRpcProvider = new ethers.JsonRpcProvider(rpcUrl.trim());
+      const factoryContract = new ethers.Contract(
+        factoryAddress.trim().toLowerCase(),
+        [
+          "function allPairsLength() external view returns (uint)",
+          "function allPairs(uint) external view returns (address)"
+        ],
+        tempRpcProvider
+      );
+
+      const totalBig = await factoryContract.allPairsLength();
+      const count = Math.min(Number(totalBig), 50);
+      const pairs: OnChainPairItem[] = [];
+
+      for (let i = 0; i < count; i++) {
+        try {
+          const pairAddr = await factoryContract.allPairs(i);
+          const pairContract = new ethers.Contract(
+            pairAddr,
+            [
+              "function token0() external view returns (address)",
+              "function token1() external view returns (address)",
+              "function getReserves() external view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast)"
+            ],
+            tempRpcProvider
+          );
+
+          const [t0, t1, reserves] = await Promise.all([
+            pairContract.token0(),
+            pairContract.token1(),
+            pairContract.getReserves()
+          ]);
+
+          const t0Info = getTokenDisplay(t0);
+          const t1Info = getTokenDisplay(t1);
+
+          pairs.push({
+            index: i,
+            pairAddress: pairAddr,
+            token0: t0,
+            token1: t1,
+            token0Symbol: t0Info.symbol,
+            token1Symbol: t1Info.symbol,
+            token0Logo: t0Info.logo,
+            token1Logo: t1Info.logo,
+            reserve0: ethers.formatUnits(reserves[0], t0Info.decimals),
+            reserve1: ethers.formatUnits(reserves[1], t1Info.decimals),
+          });
+        } catch (pairErr) {
+          console.error(`Failed to load pair index ${i}:`, pairErr);
+        }
+      }
+
+      setAllPairsList(pairs);
+    } catch (err) {
+      console.error("Failed to query all pairs from factory:", err);
+    } finally {
+      setLoadingPairs(false);
+    }
+  };
+
+  // Fetch all existing pairs whenever factory address or rpc changes
+  useEffect(() => {
+    fetchAllPairs();
+  }, [factoryAddress, rpcUrl]);
+
+  // Handler to select an existing pair for swap & inspect
+  const handleSelectExistingPair = (t0: string, t1: string) => {
+    setToken0Address(t0);
+    setToken1Address(t1);
+    setPairTokenA(t0);
+    setPairTokenB(t1);
+    setSwapTokenIn(t0);
+    setSwapTokenOut(t1);
+  };
+
   // On-Chain Transaction: Create Pair via connected MetaMask wallet!
   const triggerCreatePairOnChain = async (e: FormEvent) => {
     e.preventDefault();
@@ -272,6 +356,7 @@ export default function App() {
       setTxHashResult(tx.hash);
       
       await tx.wait();
+      await fetchAllPairs();
       alert(language === "fa" ? "تراکنش با موفقیت ماین شد و جفت استخر تشکیل گردید!" : "Liquidity pair contract created successfully on MetaMask!");
     } catch (err: any) {
       console.error(err);
@@ -513,6 +598,11 @@ export default function App() {
               txMining={txMining}
               txHashResult={txHashResult}
               triggerCreatePairOnChain={triggerCreatePairOnChain}
+              factoryAddress={factoryAddress}
+              allPairsList={allPairsList}
+              loadingPairs={loadingPairs}
+              refreshAllPairs={fetchAllPairs}
+              onSelectExistingPair={handleSelectExistingPair}
             />
           )}
         </div>

@@ -17,6 +17,7 @@ import {
   Plus
 } from "lucide-react";
 import { AdminPanelProps } from "../types";
+import { TEQOIN_TOKENS, TEQOIN_TOKEN_LIST, getTokenDisplay, DEFAULT_WETH } from "../tokens.config";
 
 export function AdminPanel({
   language,
@@ -56,6 +57,10 @@ export function AdminPanel({
 }: AdminPanelProps) {
   // Let's have nested tabs to organize the heavy developer dashboard logically
   const [nestedTab, setNestedTab] = useState<"configs" | "contracts" | "github" | "copilot">("configs");
+  const token0Info = getTokenDisplay(token0Address, "TOKEN-0");
+  const token1Info = getTokenDisplay(token1Address, "TOKEN-1");
+  const wethInfo = getTokenDisplay(wethAddress, "WETH");
+  const selectableTokens = TEQOIN_TOKEN_LIST.filter(t => !t.isNative);
 
   return (
     <div className="bg-slate-900 border border-indigo-950 rounded-3xl p-6 shadow-2xl mt-8">
@@ -207,24 +212,82 @@ export function AdminPanel({
                   />
                 </div>
 
-                <div>
-                  <label className="block text-[9px] text-slate-500 font-mono font-bold mb-1">TOKEN 0 REPRESENTATIVE ({currentSymbol}):</label>
+                <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-850 flex flex-col gap-1.5">
+                  <div className="flex justify-between items-center">
+                    <label className="block text-[9px] text-slate-400 font-mono font-bold">
+                      TOKEN 0 ({token0Info.symbol}):
+                    </label>
+                    <span className="text-[10px] font-mono font-bold text-indigo-400 flex items-center gap-1 bg-indigo-500/10 px-1.5 py-0.5 rounded border border-indigo-500/20">
+                      <span>{token0Info.logo}</span>
+                      <span>{token0Info.symbol}</span>
+                    </span>
+                  </div>
                   <input 
                     type="text" 
                     value={token0Address} 
                     onChange={(e) => setToken0Address(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-300 font-mono focus:border-indigo-500 outline-none"
+                    placeholder="0x..."
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 font-mono focus:border-indigo-500 outline-none"
                   />
+                  <div className="text-[10px] text-slate-500 truncate font-sans">
+                    {token0Info.name}
+                  </div>
+                  <div className="flex flex-wrap gap-1 pt-1 border-t border-slate-900">
+                    {selectableTokens.map((tk) => (
+                      <button
+                        key={`admin-t0-${tk.symbol}`}
+                        type="button"
+                        onClick={() => setToken0Address(tk.address)}
+                        className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-bold flex items-center gap-1 border transition cursor-pointer ${
+                          token0Address.toLowerCase() === tk.address.toLowerCase()
+                            ? "bg-indigo-600 text-white border-indigo-500"
+                            : "bg-slate-900 text-slate-400 hover:text-slate-200 border-slate-800"
+                        }`}
+                      >
+                        <span>{tk.logo}</span>
+                        <span>{tk.symbol}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
-                <div>
-                  <label className="block text-[9px] text-slate-500 font-mono font-bold mb-1">TOKEN 1 REPRESENTATIVE (USDT):</label>
+                <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-850 flex flex-col gap-1.5">
+                  <div className="flex justify-between items-center">
+                    <label className="block text-[9px] text-slate-400 font-mono font-bold">
+                      TOKEN 1 ({token1Info.symbol}):
+                    </label>
+                    <span className="text-[10px] font-mono font-bold text-pink-400 flex items-center gap-1 bg-pink-500/10 px-1.5 py-0.5 rounded border border-pink-500/20">
+                      <span>{token1Info.logo}</span>
+                      <span>{token1Info.symbol}</span>
+                    </span>
+                  </div>
                   <input 
                     type="text" 
                     value={token1Address} 
                     onChange={(e) => setToken1Address(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-300 font-mono focus:border-indigo-500 outline-none"
+                    placeholder="0x..."
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 font-mono focus:border-pink-500 outline-none"
                   />
+                  <div className="text-[10px] text-slate-500 truncate font-sans">
+                    {token1Info.name}
+                  </div>
+                  <div className="flex flex-wrap gap-1 pt-1 border-t border-slate-900">
+                    {selectableTokens.map((tk) => (
+                      <button
+                        key={`admin-t1-${tk.symbol}`}
+                        type="button"
+                        onClick={() => setToken1Address(tk.address)}
+                        className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-bold flex items-center gap-1 border transition cursor-pointer ${
+                          token1Address.toLowerCase() === tk.address.toLowerCase()
+                            ? "bg-pink-600 text-white border-pink-500"
+                            : "bg-slate-900 text-slate-400 hover:text-slate-200 border-slate-800"
+                        }`}
+                      >
+                        <span>{tk.logo}</span>
+                        <span>{tk.symbol}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
@@ -290,7 +353,17 @@ export function AdminPanel({
                 </div>
 
                 <div>
-                  <label className="block text-[9px] text-slate-500 font-mono font-bold mb-0.5">WRAPPED NATIVE (WETH):</label>
+                  <div className="flex justify-between items-center mb-0.5">
+                    <label className="block text-[9px] text-slate-500 font-mono font-bold">WRAPPED NATIVE (WETH):</label>
+                    <button
+                      type="button"
+                      onClick={() => setWethAddress(DEFAULT_WETH.address)}
+                      className="text-[9px] text-indigo-400 hover:text-indigo-300 font-mono cursor-pointer underline"
+                      title="Reset to default TeQoin WETH"
+                    >
+                      TeQoin WETH
+                    </button>
+                  </div>
                   <input 
                     type="text" 
                     value={wethAddress} 

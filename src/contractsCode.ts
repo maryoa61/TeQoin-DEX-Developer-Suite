@@ -3,6 +3,8 @@
  * Standard Uniswap V2 codes adapted as comprehensive single-file compilation sheets.
  */
 
+import { DEFAULT_WETH } from "./tokens.config";
+
 export interface ProjectFile {
   name: string;
   path: string;
@@ -21,7 +23,7 @@ export function getProjectFiles(config: {
 }): ProjectFile[] {
   const safeRpcUrl = config.rpcUrl || "https://rpc.teqoin.io";
   const safeChainId = config.chainId || 420377;
-  const safeWeth = (config.wethAddress || "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").toLowerCase();
+  const safeWeth = (config.wethAddress || DEFAULT_WETH.address).toLowerCase();
   const safeFeeSetter = config.feeSetter || "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
   const safeProject = config.projectName || "teqoin-dex";
 

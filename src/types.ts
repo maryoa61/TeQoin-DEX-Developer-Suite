@@ -45,6 +45,19 @@ export interface SwapTabProps {
   factoryAddress?: string;
 }
 
+export interface OnChainPairItem {
+  index: number;
+  pairAddress: string;
+  token0: string;
+  token1: string;
+  token0Symbol: string;
+  token1Symbol: string;
+  token0Logo: string;
+  token1Logo: string;
+  reserve0: string;
+  reserve1: string;
+}
+
 export interface LiquidityTabProps {
   language: "fa" | "en";
   walletConnected: boolean;
@@ -62,6 +75,11 @@ export interface LiquidityTabProps {
   txMining: boolean;
   txHashResult: string;
   triggerCreatePairOnChain: (e: FormEvent) => Promise<void>;
+  factoryAddress?: string;
+  allPairsList?: OnChainPairItem[];
+  loadingPairs?: boolean;
+  refreshAllPairs?: () => Promise<void>;
+  onSelectExistingPair?: (token0: string, token1: string) => void;
 }
 
 export interface AdminPanelProps {
